@@ -642,12 +642,19 @@ test('After the last key the cheer waits for a tap, then the card shows one time
   assert.equal(nodes.get('#win-detail').textContent,'四版 · '+clock+' · 你亲手弹了 '+played+' 个音');
 });
 
-test('Play all is the card’s only primary action; the birthday show is a quiet tile under it',async()=>{
+test('Once the show is there it is the card’s primary action; Play all steps down and FM-1 is a quiet link',async()=>{
   const html=site('index.html');
   const player=html.slice(html.indexOf('id="birthday-player-view"'),html.indexOf('id="birthday-hardware"'));
-  assert.equal(player.match(/birthday-primary/g).length,1);
+  assert.equal(player.match(/birthday-primary/g).length,1,'Play all is primary only while there is no show');
   assert.match(player,/<button id="birthday-play"[^>]*class="birthday-primary"/);
   assert.match(player,/<button id="premiere-open" type="button" hidden>/);
+  assert.ok(player.indexOf('id="premiere-open"')<player.indexOf('id="birthday-play"')&&player.indexOf('id="birthday-play"')<player.indexOf('id="birthday-fm1"'),'show, Play all, then FM-1');
+  assert.match(player,/<button id="birthday-fm1" type="button" class="birthday-link">/);
+  const css=site('style.css');
+  assert.match(css,/#premiere-open\{[^}]*background:#fa8bc7/);
+  assert.match(css,/#interlude\[data-song\]\[data-premiere\] #birthday-play\{[^}]*background:#2a1c33/);
+  assert.match(css,/\.birthday-link\{[^}]*min-height:44px[^}]*background:none/);
+  assert.match(css,/@media\(hover:hover\) and \(pointer:fine\)\{[^@]*\.birthday-link:hover\{color:#d8c8e2;text-decoration:underline\}/);
   for(const gone of ['share-video','share-more','share-download','birthday-share','birthday-roll','birthday-reel','birthday-takes','birthday-recap','birthday-explore','birthday-manual','birthday-advanced','share-make','share-dialog'])assert.ok(!html.includes('id="'+gone+'"'),gone);
   for(const gone of ['birthday-share','share-video','sendShareVideo'])assert.ok(!site('finale.js').includes(gone),gone);
   const {nodes,finishedStandardWork,loadFull}=premierePage();
@@ -657,6 +664,16 @@ test('Play all is the card’s only primary action; the birthday show is a quiet
   assert.equal(nodes.get('#premiere-open').hidden,false);
   assert.equal(nodes.get('#premiere-open-label').textContent,'看你的生日现场');
   assert.equal(nodes.get('#birthday-play').textContent,'播放全部');
+  assert.equal('premiere' in nodes.get('#interlude').dataset,true,'the card marks the show as its primary');
+  assert.equal(nodes.get('#birthday-fm1').textContent,'也可以在真的 FM-1 上弹 →');
+  // Without the video (offline copy), Play all stays the primary action.
+  const offline=premierePage();
+  await offline.finishedStandardWork();
+  offline.nodes.get('#birthday-skip').onclick();
+  offline.run(`feeds[${JSON.stringify(offline.full)}].fail()`);
+  await offline.flush();
+  assert.equal(offline.nodes.get('#premiere-open').hidden,true);
+  assert.equal('premiere' in offline.nodes.get('#interlude').dataset,false);
 });
 
 // A journey page with fake video files (fed by hand per URL), share sheet, clipboard and <video>.
@@ -806,13 +823,14 @@ test('The video plays through the site volume bus, or follows the site volume wh
 test('✕ and Escape close the show and give focus back; Tab stays inside it',async()=>{
   const p=premierePage();
   await p.ready();
+  p.run('reduced.matches=false');
   const tile=p.nodes.get('#premiere-open');
   for(const close of [()=>p.fire('keydown',{key:'Escape'}),()=>p.nodes.get('#premiere-close').onclick()]){
     tile.focus();
     tile.onclick();
     assert.equal(p.doc.activeElement,p.nodes.get('#premiere-surface'));
-    p.fire('keydown',{key:'Tab'});
-    assert.equal(p.doc.activeElement,p.nodes.get('#premiere-close'));
+    const order=['#premiere-surface','#premiere-seek','#premiere-share-now','#premiere-close'];
+    for(const next of order.slice(1)){p.fire('keydown',{key:'Tab'});assert.equal(p.doc.activeElement,p.nodes.get(next),next);}
     p.fire('keydown',{key:'Tab'});
     assert.equal(p.doc.activeElement,p.nodes.get('#premiere-surface'));
     p.fire('keydown',{key:'Tab',shiftKey:true});
@@ -824,7 +842,7 @@ test('✕ and Escape close the show and give focus back; Tab stays inside it',as
     assert.equal(p.doc.activeElement,tile);
   }
   assert.equal(p.nodes.get('#premiere-close').getAttribute('aria-label'),'关闭');
-  assert.match(site('style.css'),/#premiere-close\{[^}]*width:44px;height:44px/);
+  assert.match(site('style.css'),/#premiere-corner button\{[^}]*width:44px;height:44px/);
 });
 
 test('At the end the title card holds, and Share, Save and Watch again rise in',async()=>{
@@ -1002,7 +1020,7 @@ test('A muted site shows one speaker beside ✕ that brings the sound back; the 
   await loud.ready();
   loud.nodes.get('#premiere-open').onclick();
   assert.equal(loud.nodes.get('#premiere-sound').hidden,true,'no speaker while the sound is on');
-  assert.match(site('style.css'),/#premiere-sound\{[^}]*width:44px;height:44px/);
+  assert.match(site('style.css'),/#premiere-corner button\{[^}]*width:44px;height:44px/);
 });
 
 test('Saving the parts one by one ticks each off and moves to the next',async()=>{
@@ -1071,6 +1089,96 @@ test('Story progress is announced in quarters and once when ready; the visible l
   assert.equal(voice.textContent,'快拍的两段准备好了。');
   assert.match(site('index.html'),/<p id="premiere-story-progress" class="premiere-hint" aria-hidden="true">/);
   assert.match(site('style.css'),/\.premiere-hint>span\{display:inline-block\}/);
+});
+
+test('The seek bar is a slider: arrows step 5 s, Home and End jump, and a pointer drag seeks live then plays on',async()=>{
+  const p=premierePage();
+  await p.ready();
+  const {nodes,video}=p;
+  p.run('reduced.matches=false');
+  nodes.get('#premiere-open').onclick();
+  const seek=nodes.get('#premiere-seek');
+  assert.equal(seek.hidden,false);
+  assert.equal(seek.getAttribute('aria-label'),'播放进度');
+  const key=name=>(seek.listeners.keydown||[]).forEach(f=>f({key:name,preventDefault(){}}));
+  video.currentTime=20;
+  key('ArrowRight');
+  assert.equal(video.currentTime,25);
+  key('ArrowLeft');key('ArrowLeft');
+  assert.equal(video.currentTime,15);
+  assert.equal(seek.getAttribute('aria-valuenow'),'15');
+  assert.equal(seek.getAttribute('aria-valuemax'),'87');
+  assert.equal(seek.getAttribute('aria-valuetext'),'0:15 / 1:27');
+  key('Home');
+  assert.equal(video.currentTime,0);
+  key('End');
+  assert.equal(video.currentTime,87.3);
+  // The fake track spans x 0–700: a press at 350 jumps to the middle, a drag to 175 seeks to a quarter.
+  video.currentTime=10;
+  assert.equal(video.paused,false);
+  const pointer=(type,x)=>(seek.listeners[type]||[]).forEach(f=>f({pointerId:1,clientX:x,clientY:420,preventDefault(){}}));
+  pointer('pointerdown',350);
+  assert.equal(video.paused,true,'paused while dragging');
+  assert.ok(Math.abs(video.currentTime-43.65)<1e-9);
+  assert.equal('active' in seek.dataset,true);
+  assert.equal(nodes.get('#premiere-seek-time').hidden,false);
+  assert.equal(nodes.get('#premiere-seek-time').textContent,'0:44 / 1:27');
+  assert.equal(nodes.get('#premiere-surface').dataset.state,'playing','no play button flashes mid-drag');
+  pointer('pointermove',175);
+  assert.ok(Math.abs(video.currentTime-21.825)<1e-9);
+  const plays=video.plays;
+  pointer('pointerup',175);
+  assert.equal(video.plays,plays+1,'plays on after the drag');
+  assert.equal(nodes.get('#premiere-seek-time').hidden,true);
+  assert.equal('active' in seek.dataset,false);
+  // Paused before the drag: it stays paused.
+  nodes.get('#premiere-surface').onclick();
+  pointer('pointerdown',700);pointer('pointerup',700);
+  assert.equal(video.plays,plays+1);
+  assert.equal(video.currentTime,87.3);
+  const css=site('style.css');
+  assert.match(css,/#premiere-seek\{[^}]*height:44px[^}]*touch-action:none/);
+  assert.match(css,/#premiere-progress\{[^}]*transform:scaleY\(\.5\)[^}]*transition:transform 150ms ease-out/);
+  assert.match(css,/#premiere-thumb\{[^}]*transition:transform 150ms ease-out,opacity 150ms ease-out/);
+  assert.match(css,/#premiere-seek-time\{[^}]*font-variant-numeric:tabular-nums/);
+  assert.match(site('premiere.js'),/toLocalPoint\(event\.clientX,event\.clientY\)/,'sideways mode maps the pointer');
+});
+
+test('The share shortcut pauses the video and asks Reels or Story; Back and Escape return to it where it stopped',async()=>{
+  const p=premierePage();
+  await p.ready();
+  const {nodes,video}=p;
+  p.run('reduced.matches=false');
+  nodes.get('#premiere-open').onclick();
+  const share=nodes.get('#premiere-share-now');
+  assert.equal(share.hidden,false);
+  assert.equal(share.getAttribute('aria-label'),'分享');
+  video.currentTime=31;
+  share.onclick();
+  assert.equal(video.paused,true);
+  assert.equal(nodes.get('#premiere-choose').hidden,false);
+  assert.equal(p.doc.activeElement,nodes.get('#premiere-reels'));
+  for(const back of [()=>nodes.get('#premiere-back').onclick(),()=>p.fire('keydown',{key:'Escape'})]){
+    back();
+    assert.equal(nodes.get('#premiere-end').hidden,true);
+    assert.equal(nodes.get('#premiere-surface').hidden,false);
+    assert.equal(nodes.get('#premiere-surface').dataset.state,'paused');
+    assert.equal(video.currentTime,31);
+    assert.equal(p.doc.activeElement,share);
+    assert.equal(nodes.get('#premiere').hidden,false);
+    share.onclick();
+  }
+  // Reels from mid-video shares the full file, as at the end.
+  nodes.get('#premiere-reels').onclick();
+  await p.flush();
+  assert.deepEqual(p.json('shared'),[['happy-birthday.mp4']]);
+  // Reduced motion: no shortcut on the poster until it has played.
+  const calm=premierePage();
+  await calm.ready();
+  calm.nodes.get('#premiere-open').onclick();
+  assert.equal(calm.nodes.get('#premiere-share-now').hidden,true);
+  calm.nodes.get('#premiere-surface').onclick();
+  assert.equal(calm.nodes.get('#premiere-share-now').hidden,false);
 });
 
 test('A video that cannot be fetched quietly takes its option away',async()=>{
@@ -1282,7 +1390,7 @@ test('Play it on FM-1: backup first, then download, send and set up; Back return
   const page=journeyPage();
   await page.finishedStandardWork();
   page.nodes.get('#birthday-skip').onclick();
-  assert.equal(page.nodes.get('#birthday-fm1').textContent,'在 FM-1 上弹 →');
+  assert.equal(page.nodes.get('#birthday-fm1').textContent,'也可以在真的 FM-1 上弹 →');
   page.nodes.get('#birthday-fm1').onclick();
   assert.equal(page.nodes.get('#birthday-player-view').hidden,true);
   assert.equal(page.nodes.get('#birthday-hardware').hidden,false);

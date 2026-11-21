@@ -541,7 +541,8 @@ function endBirthdaySurprise(focus=true){
   $('#birthday-surprise').hidden=true;
   delete $('#interlude').dataset.celebrating;
   $('#interlude').setAttribute('aria-labelledby','win-title');
-  if(focus)$('#birthday-play').focus({preventScroll:true});
+  // Focus lands on the card's primary action: the birthday show once it is there, Play all otherwise.
+  if(focus)($('#premiere-open').hidden?$('#birthday-play'):$('#premiere-open')).focus({preventScroll:true});
 }
 
 function showBirthdaySurprise({x,y}){
@@ -719,7 +720,7 @@ function renderBirthdayPlayer(){
     return segment;
   }));
   paintPremiere();
-  $('#birthday-fm1').textContent=T('Play it on FM-1 →','在 FM-1 上弹 →');
+  $('#birthday-fm1').textContent=T('You can also play it on a real FM-1 →','也可以在真的 FM-1 上弹 →');
   $('#birthday-fm1').onclick=()=>showBirthdayHardware(true);
   $('#birthday-hardware-back').onclick=()=>showBirthdayHardware(false);
   renderBirthdayHardware();

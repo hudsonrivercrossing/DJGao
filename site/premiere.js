@@ -8,7 +8,7 @@ const premiereStory=[1,2].map(part=>({url:'assets/share/happy-birthday-story-'+p
 const premiereFetches=new Map();
 // view: 'watch' (playing or paused), 'end' (share, save, watch again), 'choose' (Reels or Story),
 // 'story' (halves loading, then Share 2 clips) or 'saves' (a link per half).
-const premiere={open:false,view:'watch',opener:null,routed:false,wantsPlay:false,frame:0,status:'',reelsSendable:true,iosSave:true,storyFailed:false,sourceUrl:null,partUrls:null,savedParts:[false,false],announced:'',heard:{video:false,story:false}};
+const premiere={open:false,view:'watch',opener:null,routed:false,wantsPlay:false,frame:0,status:'',reelsSendable:true,iosSave:true,storyFailed:false,sourceUrl:null,partUrls:null,savedParts:[false,false],announced:'',heard:{video:false,story:false},started:false,fromWatch:false,seeking:null,second:-1};
 // iPhone, or an iPad that calls itself a Mac. A touch Mac alone is not enough (desktop device emulation reports
 // one): only WebKit on iOS also has navigator.standalone.
 const premiereIOS=()=>{
@@ -94,6 +94,8 @@ function openPremiere(){
   premiere.open=true;
   premiere.view='watch';
   premiere.status='';
+  premiere.started=false;
+  premiere.fromWatch=false;
   $('#premiere').hidden=false;
   $('#interlude').inert=true;
   $('#utility-controls').inert=true;
@@ -140,6 +142,7 @@ function togglePremiere(){
 
 function watchPremiereAgain(){
   premiere.view='watch';
+  premiere.fromWatch=false;
   premiere.status='';
   $('#premiere-video').currentTime=0;
   playPremiere();
@@ -147,17 +150,104 @@ function watchPremiereAgain(){
   $('#premiere-surface').focus({preventScroll:true});
 }
 
-// The hairline under the video follows the playhead every frame while it plays.
+const premiereClock=seconds=>{const whole=Math.max(0,Math.round(seconds));return Math.floor(whole/60)+':'+String(whole%60).padStart(2,'0');};
+const premiereLength=()=>{const length=$('#premiere-video').duration;return Number.isFinite(length)&&length>0?length:0;};
+
+// The seek bar follows the playhead every frame while it plays; the slider's values change once a second.
 function tickPremiere(){
-  const video=$('#premiere-video'),length=video.duration;
-  $('#premiere-bar').style.transform='scaleX('+(Number.isFinite(length)&&length>0?Math.min(1,video.currentTime/length):0)+')';
+  const video=$('#premiere-video'),length=premiereLength(),fraction=length?Math.min(1,video.currentTime/length):0;
+  $('#premiere-bar').style.transform='scaleX('+fraction+')';
+  $('#premiere-rail').style.transform='translateX('+fraction*100+'%)';
+  const second=Math.round(video.currentTime);
+  if(second!==premiere.second){
+    premiere.second=second;
+    const seek=$('#premiere-seek'),text=premiereClock(video.currentTime)+' / '+premiereClock(length);
+    seek.setAttribute('aria-valuemax',String(Math.round(length)));
+    seek.setAttribute('aria-valuenow',String(second));
+    seek.setAttribute('aria-valuetext',text);
+    if(premiere.seeking)$('#premiere-seek-time').textContent=text;
+  }
   cancelAnimationFrame(premiere.frame);
   if(premiere.open&&!video.paused)premiere.frame=requestAnimationFrame(tickPremiere);
+}
+
+function seekPremiere(seconds){
+  const video=$('#premiere-video'),length=premiereLength();
+  if(!length)return;
+  video.currentTime=Math.max(0,Math.min(length,seconds));
+  premiere.second=-1;
+  tickPremiere();
+}
+
+// Pointer on the seek bar: a tap jumps there, a drag seeks live (paused meanwhile, playing again after if it was).
+// localRect and toLocalPoint keep it right in sideways mode, where the screen's y is the layout's x.
+function seekPremiereTo(event){
+  const track=localRect($('#premiere-progress')),point=toLocalPoint(event.clientX,event.clientY);
+  seekPremiere((point.x-track.left)/(track.width||1)*premiereLength());
+}
+
+function startPremiereSeek(event){
+  if(!premiereLength()||premiere.seeking)return;
+  event.preventDefault();
+  const video=$('#premiere-video'),seek=$('#premiere-seek');
+  premiere.seeking={pointer:event.pointerId,resume:!video.paused};
+  try{seek.setPointerCapture?.(event.pointerId);}catch{}
+  seek.dataset.active='';
+  $('#premiere-seek-time').hidden=false;
+  if(!video.paused)video.pause();
+  seekPremiereTo(event);
+  $('#premiere-seek-time').textContent=premiereClock(video.currentTime)+' / '+premiereClock(premiereLength());
+}
+
+function movePremiereSeek(event){
+  if(premiere.seeking?.pointer===event.pointerId)seekPremiereTo(event);
+}
+
+function endPremiereSeek(event){
+  const seeking=premiere.seeking;
+  if(!seeking||seeking.pointer!==event.pointerId)return;
+  premiere.seeking=null;
+  delete $('#premiere-seek').dataset.active;
+  $('#premiere-seek-time').hidden=true;
+  if(seeking.resume)playPremiere();
+  else paintPremiere();
+}
+
+function premiereSeekKey(event){
+  const video=$('#premiere-video'),step={ArrowLeft:-5,ArrowDown:-5,ArrowRight:5,ArrowUp:5}[event.key];
+  if(step)seekPremiere(video.currentTime+step);
+  else if(event.key==='Home')seekPremiere(0);
+  else if(event.key==='End')seekPremiere(premiereLength());
+  else return;
+  event.preventDefault();
+}
+
+// The share shortcut on the playing video: it pauses and asks Reels or Story, as at the end. Back (or Escape)
+// returns to the paused video where it stopped.
+function sharePremiereNow(){
+  premiere.fromWatch=true;
+  premiere.wantsPlay=false;
+  $('#premiere-video').pause();
+  choosePremiereShare();
+}
+
+// One view back, onto the control that opened the view being left. The top level closes the show instead.
+function stepBackPremiere(){
+  const {view}=premiere;
+  if(view==='choose'){
+    premiere.status='';
+    if(premiere.fromWatch){premiere.fromWatch=false;setPremiereView('watch','#premiere-share-now');}
+    else setPremiereView('end','#premiere-share');
+  }else if(view==='story'||view==='saves')setPremiereView('choose',premiere.storyFailed?'#premiere-reels':'#premiere-story');
+  else return false;
+  return true;
 }
 
 // It stops on its last frame, the title card; the share controls rise in under it.
 function endPremiere(){
   premiere.wantsPlay=false;
+  premiere.fromWatch=false;
+  premiere.status='';
   premiere.view='end';
   paintPremiere();
   $('#premiere-share').focus({preventScroll:true});
@@ -265,20 +355,17 @@ function savePremiere(){
 }
 
 function premiereFocusables(){
-  const views={watch:['#premiere-surface'],end:['#premiere-share','#premiere-save','#premiere-again'],
+  const views={watch:['#premiere-surface','#premiere-seek'],end:['#premiere-share','#premiere-save','#premiere-again'],
     choose:['#premiere-reels','#premiere-story','#premiere-back'],story:['#premiere-story-share','#premiere-back'],
     saves:['#premiere-part-1','#premiere-part-2','#premiere-back']}[premiere.view];
-  return [...views,'#premiere-sound','#premiere-close'].map(selector=>$(selector)).filter(node=>node&&!node.hidden);
+  return [...views,'#premiere-sound','#premiere-share-now','#premiere-close'].map(selector=>$(selector)).filter(node=>node&&!node.hidden);
 }
 
 function premiereKey(event){
   if(!premiere.open)return;
   if(event.key==='Escape'){
     event.preventDefault();
-    // One view back from the Reels/Story choice and from Story, onto the control that opened it; the top level closes.
-    if(premiere.view==='choose')setPremiereView('end','#premiere-share');
-    else if(premiere.view==='story'||premiere.view==='saves')setPremiereView('choose',premiere.storyFailed?'#premiere-reels':'#premiere-story');
-    else closePremiere();
+    if(!stepBackPremiere())closePremiere();
     return;
   }
   if(event.key!=='Tab')return;
@@ -311,7 +398,11 @@ function announcePremiere(note){
 function paintPremiere(){
   const entry=premiereFetches.get(premiereFull.url);
   const tile=$('#premiere-open');
-  tile.hidden=!premiereAvailable();
+  const available=premiereAvailable();
+  tile.hidden=!available;
+  // The show is the card's primary action while it is there; Play all steps down to a quiet row (style.css).
+  const card=$('#interlude');
+  if(available)card.dataset.premiere='';else delete card.dataset.premiere;
   $('#premiere-open-label').textContent=T('Watch your birthday show','看你的生日现场');
   if(!premiere.open)return;
   const video=$('#premiere-video'),{view}=premiere,ready=Boolean(premiere.sourceUrl);
@@ -325,6 +416,13 @@ function paintPremiere(){
   const playing=ready&&premiere.wantsPlay&&!video.paused;
   const surface=$('#premiere-surface');
   surface.hidden=view!=='watch';
+  const seek=$('#premiere-seek');
+  seek.hidden=view!=='watch'||!ready;
+  seek.setAttribute('aria-label',T('Playback position','播放进度'));
+  const shareNow=$('#premiere-share-now');
+  // Not on the poster before it has played (reduced motion), nor before the file is here to share.
+  shareNow.hidden=view!=='watch'||!ready||!premiere.started||!entry?.file;
+  shareNow.setAttribute('aria-label',T('Share','分享'));
   surface.dataset.state=premiere.wantsPlay?'playing':'paused';
   surface.setAttribute('aria-label',premiere.wantsPlay?T('Pause','暂停'):T('Play','播放'));
   const loading=$('#premiere-loading');
@@ -384,9 +482,17 @@ function paintPremiere(){
 function setupPremiere(){
   const video=$('#premiere-video');
   video.addEventListener('ended',endPremiere);
-  video.addEventListener('play',paintPremiere);
+  video.addEventListener('play',()=>{premiere.started=true;paintPremiere();});
+  video.addEventListener('loadedmetadata',()=>{premiere.second=-1;tickPremiere();});
   // A pause from outside (the system, a call, the lock screen) shows the play button too.
-  video.addEventListener('pause',()=>{if(premiere.sourceUrl)premiere.wantsPlay=false;tickPremiere();paintPremiere();});
+  video.addEventListener('pause',()=>{if(premiere.sourceUrl&&!premiere.seeking)premiere.wantsPlay=false;tickPremiere();paintPremiere();});
+  const seek=$('#premiere-seek');
+  seek.addEventListener('pointerdown',startPremiereSeek);
+  seek.addEventListener('pointermove',movePremiereSeek);
+  seek.addEventListener('pointerup',endPremiereSeek);
+  seek.addEventListener('pointercancel',endPremiereSeek);
+  seek.addEventListener('keydown',premiereSeekKey);
+  $('#premiere-share-now').onclick=sharePremiereNow;
   video.addEventListener('timeupdate',syncPremiereVolume);
   // On the document, so Escape and the Tab trap still work if a view change ever leaves focus outside.
   document.addEventListener('keydown',premiereKey);
@@ -402,5 +508,5 @@ function setupPremiere(){
   $('#premiere-reels').onclick=sharePremiereReels;
   $('#premiere-story').onclick=choosePremiereStory;
   $('#premiere-story-share').onclick=sharePremiereStory;
-  $('#premiere-back').onclick=()=>setPremiereView(premiere.view==='choose'?'end':'choose',premiere.view==='choose'?'#premiere-share':'#premiere-reels');
+  $('#premiere-back').onclick=stepBackPremiere;
 }
