@@ -16,7 +16,7 @@
 
 ## 生日现场
 
-一段 87 秒的视频：她的手在琴键上，台下的人跟着跳，头顶放起烟花。
+**[▶ 看视频](https://hudsonrivercrossing.github.io/DJGao/assets/share/happy-birthday.mp4)**
 
 <table>
   <tr>
