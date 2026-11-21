@@ -31,10 +31,12 @@ function birthdayElapsed(){
   return Math.max(birthdayFrom,Math.min(birthdaySet.length,now-start));
 }
 
+// The round play button at the start of the status line: an icon, so its name lives in aria-label.
 function paintBirthdayPlay(){
   const button=$('#birthday-play');
   button.dataset.state=birthdayMusicPlaying?'playing':'';
-  button.textContent=birthdayMusicPlaying?T('Pause','暂停'):birthdayPosition>0?T('Resume','继续播放'):T('Play all','播放全部');
+  button.setAttribute('aria-pressed',String(birthdayMusicPlaying));
+  button.setAttribute('aria-label',birthdayMusicPlaying?T('Pause','暂停'):T('Play all four takes','播放全部四版'));
 }
 
 // Each take fills as the playhead crosses it; the readout under the timeline follows.
@@ -45,9 +47,89 @@ function paintBirthdayTimeline(seconds=birthdayPosition){
     const progress=Math.max(0,Math.min(1,(seconds-birthdaySet.takeStarts[pass])/birthdayTakeLength(pass)));
     segment.style.setProperty('--progress',progress.toFixed(4));
     segment.dataset.state=birthdayMusicPlaying&&pass===current?'playing':progress>=1?'played':'';
+    // Paused mid-song, the playhead line stays where it stopped.
+    if(!birthdayMusicPlaying&&seconds>0&&pass===current&&progress<1)segment.dataset.head='';else delete segment.dataset.head;
   });
   const time=birthdayClock(seconds)+' / '+birthdayClock(birthdaySet.length);
-  if($('#birthday-time').textContent!==time)$('#birthday-time').textContent=time;
+  if($('#birthday-time').textContent!==time){
+    $('#birthday-time').textContent=time;
+    const timeline=$('#birthday-timeline');
+    timeline.setAttribute('aria-valuemax',String(Math.floor(birthdaySet.length)));
+    timeline.setAttribute('aria-valuenow',String(Math.floor(seconds)));
+    timeline.setAttribute('aria-valuetext',T(...djTakes[current].title)+' · '+time);
+  }
+}
+
+// Seeking: while playing the song restarts from the new place; paused, the place moves and waits.
+function seekBirthday(seconds){
+  if(!birthdaySet)return;
+  const to=Math.max(0,Math.min(birthdaySet.length,seconds)),wasPlaying=birthdayMusicPlaying;
+  if(wasPlaying)stopBirthdayMusic();
+  birthdayPosition=to;
+  if(wasPlaying&&to<birthdaySet.length){startBirthdayMusic(to);return;}
+  selectBirthdayTake(birthdayTakeAt(Math.min(to,birthdaySet.length-.001)));
+  paintBirthdayPlay();
+  paintBirthdayTimeline();
+}
+
+// A point on the timeline as song time: the take under it, then the fraction across that take.
+// toLocalPoint and localRect keep it right in sideways mode.
+function birthdaySecondsAt(event){
+  const point=toLocalPoint(event.clientX,event.clientY),segments=Array.from($('#birthday-timeline').children);
+  for(const [pass,segment] of segments.entries()){
+    const rect=localRect(segment);
+    if(point.x<=rect.right||pass===segments.length-1){
+      const fraction=Math.max(0,Math.min(1,(point.x-rect.left)/(rect.width||1)));
+      return birthdaySet.takeStarts[pass]+fraction*birthdayTakeLength(pass);
+    }
+  }
+  return 0;
+}
+
+// A drag on the timeline scrubs (paused meanwhile, playing on after if it was); a tap is a click on a take.
+let birthdayDrag=null,birthdayDragged=false;
+function startBirthdayDrag(event){
+  if(!birthdaySet)return;
+  birthdayDrag={pointer:event.pointerId,x:event.clientX,y:event.clientY,resume:birthdayMusicPlaying,moving:false};
+  birthdayDragged=false;
+}
+function moveBirthdayDrag(event){
+  const drag=birthdayDrag;
+  if(!drag||drag.pointer!==event.pointerId)return;
+  if(!drag.moving){
+    if(Math.hypot(event.clientX-drag.x,event.clientY-drag.y)<6)return;
+    drag.moving=true;
+    try{$('#birthday-timeline').setPointerCapture?.(event.pointerId);}catch{}
+    if(birthdayMusicPlaying)stopBirthdayMusic();
+  }
+  birthdayPosition=birthdaySecondsAt(event);
+  selectBirthdayTake(birthdayTakeAt(birthdayPosition));
+  paintBirthdayTimeline();
+}
+function endBirthdayDrag(event){
+  const drag=birthdayDrag;
+  if(!drag||drag.pointer!==event.pointerId)return;
+  birthdayDrag=null;
+  if(!drag.moving)return;
+  birthdayDragged=true;
+  if(drag.resume)startBirthdayMusic(birthdayPosition);
+  else paintBirthdayPlay();
+}
+
+// A tap on a take: playing, it seeks to that exact point; stopped, it plays from the take's start.
+function tapBirthdayTake(pass,event){
+  if(birthdayDragged){birthdayDragged=false;return;}
+  if(birthdayMusicPlaying&&Number.isFinite(event?.clientX))seekBirthday(birthdaySecondsAt(event));
+  else toggleBirthdayMusic(pass);
+}
+
+function birthdayTimelineKey(event){
+  const step={ArrowLeft:-5,ArrowDown:-5,ArrowRight:5,ArrowUp:5}[event.key];
+  if(step)seekBirthday(birthdayElapsed()+step);
+  else if(event.key==='Home')seekBirthday(0);
+  else if(event.key==='End')seekBirthday(birthdaySet.length);
+  else return;
+  event.preventDefault();
 }
 
 function followBirthdayPlayhead(){
@@ -102,7 +184,7 @@ async function startBirthdayMusic(from=0){
   const card=$('#interlude');
   if(synth.muted){
     $('#birthday-status').textContent=T('Sound is off. Tap to hear the song.','声音已关，点一下听生日歌。');
-    $('#birthday-play').textContent=T('Turn on sound and play','打开声音并播放');
+    $('#birthday-play').setAttribute('aria-label',T('Turn on sound and play','打开声音并播放'));
     return;
   }
   const run=++birthdayRun;
@@ -702,24 +784,25 @@ function renderBirthdayPlayer(){
     closeBirthdayPlayer();
     $('#info-button').focus({preventScroll:true});
   };
-  $('#birthday-timeline').setAttribute('aria-label',T('Four takes. Tap one to play from it.','四版。点一版，从那里开始播放。'));
+  $('#birthday-timeline').setAttribute('aria-label',T('Song position · four takes','播放位置 · 四版'));
+  // The takes are parts of the slider, not buttons of their own: a pointer taps them, the keyboard moves the slider.
   $('#birthday-timeline').replaceChildren(...patterns.map((take,pass)=>{
-    const segment=document.createElement('button'),notes=document.createElement('span'),name=T(...djTakes[pass].title);
-    segment.type='button';
+    const segment=document.createElement('div'),notes=document.createElement('span');
     segment.className='birthday-take';
     segment.dataset.take=String(pass);
     segment.style.setProperty('--grow',birthdayTakeLength(pass).toFixed(2));
-    segment.setAttribute('aria-label',T('Play from take '+(pass+1)+', '+name,'从第 '+(pass+1)+' 版「'+name+'」开始播放'));
     notes.className='birthday-notes';
     notes.setAttribute('aria-hidden','true');
     notes.append(...birthdayNoteMarks(take));
     segment.append(notes);
-    segment.onclick=()=>toggleBirthdayMusic(pass);
+    segment.onclick=event=>tapBirthdayTake(pass,event);
     return segment;
   }));
   paintPremiere();
   $('#birthday-fm1').textContent=T('You can also play it on a real FM-1 →','也可以在真的 FM-1 上弹 →');
   $('#birthday-fm1').onclick=()=>showBirthdayHardware(true);
+  $('#birthday-redo').textContent=T('Make a new song','重新做一首');
+  $('#birthday-redo').onclick=()=>openRedoDialog($('#birthday-redo'));
   $('#birthday-hardware-back').onclick=()=>showBirthdayHardware(false);
   renderBirthdayHardware();
   selectBirthdayTake(birthdaySelected);

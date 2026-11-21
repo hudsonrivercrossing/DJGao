@@ -552,29 +552,32 @@ body{font-family:var(--reading-type)}
 /* My song: one timeline of the four takes, one primary action, two quiet ones. */
 #interlude[data-song] #win-detail{margin:8px 0 0;font-size:13px;line-height:1.5;color:#b7a5c6;font-variant-numeric:tabular-nums}
 #birthday-player-view[hidden],#birthday-hardware[hidden]{display:none}
-#birthday-timeline{display:flex;gap:4px;margin-top:24px}
-.birthday-take{--take:#eca7d2;--progress:0;position:relative;flex:var(--grow,1) 1 0;min-width:0;height:64px;padding:0;border:0;border-radius:6px;background:#2a1b36;box-shadow:inset 0 0 0 1px #47314d;overflow:hidden;cursor:pointer;touch-action:manipulation;transition:box-shadow 160ms ease-out,transform 120ms ease-out}
+/* The timeline is the song's seek bar: tap a take to play from it, drag or use the arrow keys to move the playhead. */
+#birthday-timeline{display:flex;gap:4px;margin-top:24px;border-radius:8px;cursor:pointer;touch-action:none;outline:0}
+#birthday-timeline:focus-visible{outline:2px solid #eee;outline-offset:3px}
+.birthday-take{--take:#eca7d2;--progress:0;position:relative;flex:var(--grow,1) 1 0;min-width:0;height:64px;padding:0;border:0;border-radius:6px;background:#2a1b36;box-shadow:inset 0 0 0 1px #47314d;overflow:hidden;transition:box-shadow 160ms ease-out,transform 120ms ease-out}
 .birthday-take:nth-child(2){--take:#c2adff}
 .birthday-take:nth-child(3){--take:#9ef1da}
 .birthday-take:nth-child(4){--take:#f6d38c}
 .birthday-take::before{content:'';position:absolute;inset:0;background:var(--take);opacity:.16;transform-origin:left;transform:scaleX(var(--progress))}
 /* The playhead: a full-width box whose left edge is the line, moved by transform only. */
-.birthday-take::after{content:'';position:absolute;inset:0;border-left:2px solid var(--take);transform:translateX(calc(var(--progress) * 100% - 1px));opacity:0}
-.birthday-take[data-state="playing"]::after{opacity:1}
+.birthday-take::after{content:'';position:absolute;inset:0;border-left:2px solid #fa8bc7;transform:translateX(calc(var(--progress) * 100% - 1px));opacity:0}
+.birthday-take:is([data-state="playing"],[data-head])::after{opacity:1}
 .birthday-take[aria-current="true"]{box-shadow:inset 0 0 0 2px var(--take)}
 .birthday-take:active{transform:scale(.98)}
-.birthday-take:focus-visible{outline:2px solid #eee;outline-offset:2px}
 .birthday-notes{position:absolute;inset:8px 3px 6px;pointer-events:none}
 .birthday-notes i{position:absolute;left:var(--start);width:calc(var(--length) - 1px);min-width:2px;bottom:calc(7px + var(--pitch) * (100% - 10px));height:3px;border-radius:1px;background:var(--take);opacity:.5}
 .birthday-notes b{position:absolute;left:var(--start);bottom:0;width:3px;height:3px;border-radius:1px;background:var(--take);opacity:.35}
 .birthday-take[aria-current="true"] .birthday-notes>*{opacity:.95}
-#interlude.finale .birthday-now{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:10px 0 0;font-size:12px;line-height:1.4}
-#interlude.finale #birthday-status{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--birthday-accent);font-size:13px}
+#interlude.finale .birthday-now{display:flex;align-items:center;gap:10px;margin:8px 0 0 -2px;font-size:12px;line-height:1.4}
+#interlude.finale #birthday-status{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--birthday-accent);font-size:13px}
 #birthday-time{flex:none;color:#b7a5c6;font-variant-numeric:tabular-nums}
-#interlude[data-song] #birthday-play{display:flex;align-items:center;justify-content:center;gap:10px;width:min(100%,260px);min-height:48px;margin:20px auto 0;padding:0 24px;border:0;border-radius:8px;background:#fa8bc7;color:#2a1030;font:700 15px/1 var(--reading-type);box-shadow:inset 0 1px #ffffff55,0 3px 0 #9a3f78;cursor:pointer;touch-action:manipulation;transition:transform 120ms ease-out,box-shadow 120ms ease-out}
-#birthday-play::before{content:'';flex:none;width:10px;height:12px;background:currentColor;clip-path:polygon(0 0,100% 50%,0 100%)}
-#birthday-play[data-state="playing"]::before{clip-path:none;background:linear-gradient(90deg,currentColor 0 35%,transparent 35% 65%,currentColor 65%)}
-#interlude[data-song] #birthday-play:active{transform:translateY(2px);box-shadow:inset 0 1px #ffffff55,0 1px 0 #9a3f78}
+/* Play all four: a quiet ring at the start of the status line. The show above stays the card's one filled button. */
+#birthday-play{flex:none;display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;background:none;box-shadow:inset 0 0 0 1.5px #6b4a73;color:#fa8bc7;cursor:pointer;touch-action:manipulation;transition:scale 120ms ease-out,box-shadow 150ms ease-out}
+#birthday-play:active{scale:.96}
+#birthday-play:focus-visible{outline:2px solid #eee;outline-offset:2px}
+#birthday-play::before{content:'';width:11px;height:13px;margin-left:2px;background:currentColor;clip-path:polygon(0 0,100% 50%,0 100%)}
+#birthday-play[data-state="playing"]::before{margin-left:0;clip-path:none;background:linear-gradient(90deg,currentColor 0 35%,transparent 35% 65%,currentColor 65%)}
 
 /* The birthday show's entry on the card. Once the video is on its way it is the card's primary action (filled
    pink, with the poster and the length), and Play all steps down to a quiet row under it. */
@@ -584,10 +587,9 @@ body{font-family:var(--reading-type)}
 #premiere-open small::before{content:'';width:9px;height:11px;background:#2a1030;clip-path:polygon(0 0,100% 50%,0 100%)}
 #premiere-open:active{scale:.98}
 #premiere-open[hidden]{display:none}
-#interlude[data-song][data-premiere] #birthday-play{width:100%;min-height:48px;margin-top:10px;background:#2a1c33;box-shadow:inset 0 0 0 1px #4a2a52;color:#ffe2f2;font:600 14px/1 var(--reading-type)}
-#interlude[data-song][data-premiere] #birthday-play:active{transform:none;scale:.98;box-shadow:inset 0 0 0 1px #4a2a52}
 /* Play it on a real FM-1: a quiet link, last. */
-.birthday-link{display:block;min-height:44px;margin:14px auto 0;padding:0 12px;border:0;background:none;color:#a594b3;font:13px/44px var(--reading-type);cursor:pointer;touch-action:manipulation;text-underline-offset:3px;transition:color 150ms ease-out}
+.birthday-links{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0 2px;margin:14px 0 0;color:#5f4d6b;font-size:13px}
+.birthday-link{display:inline-block;min-height:44px;margin:0;padding:0 10px;border:0;background:none;color:#a594b3;font:13px/44px var(--reading-type);cursor:pointer;touch-action:manipulation;text-underline-offset:3px;transition:color 150ms ease-out}
 .birthday-link:active{scale:1}
 .birthday-link:focus-visible{outline:2px solid #eee;outline-offset:2px;border-radius:6px}
 
@@ -619,14 +621,14 @@ body{font-family:var(--reading-type)}
 @keyframes birthday-view-in{from{opacity:0;transform:translateY(6px)}}
 @media(hover:hover) and (pointer:fine){
   .birthday-take:hover{background:#33223f}
-  #interlude[data-song] #birthday-play:hover,#birthday-pattern-download:hover,#premiere-open:hover{background:#ff9fd0}
-  #interlude[data-song][data-premiere] #birthday-play:hover{background:#33223d}
+  #birthday-pattern-download:hover,#premiere-open:hover{background:#ff9fd0}
+  #birthday-play:hover{box-shadow:inset 0 0 0 1.5px #fa8bc7}
   .birthday-link:hover{color:#d8c8e2;text-decoration:underline}
   #birthday-hardware-back:hover{background:#1e1526}
   #birthday-hardware-source:hover{color:#ffd2ec}
 }
 @media(prefers-reduced-motion:reduce){
-  .birthday-take,#interlude[data-song] #birthday-play,#birthday-pattern-download{transition:none}
+  .birthday-take,#birthday-play,#birthday-pattern-download{transition:none}
   .birthday-take:active{transform:none}
   #interlude[data-view] #birthday-player-view,#interlude[data-view] #birthday-hardware{animation:none}
 }
@@ -703,6 +705,8 @@ body{font-family:var(--reading-type)}
 .info-about{display:flex;align-items:center;gap:4px;border-top:1px solid #2e2038;color:#6f5c7d;font-size:12px}
 #info-about,.info-quiet-link{min-height:44px;padding:0 4px;border:0;background:none;color:#b7a5c6;font:12px Arial,'PingFang SC',sans-serif;cursor:pointer}.info-about{flex-wrap:wrap}.info-gap{flex:1}.info-quiet-link:focus-visible,#info-about:focus-visible{outline:2px solid #f3a6d4;outline-offset:2px;border-radius:4px}@media(hover:hover) and (pointer:fine){.info-quiet-link:hover{color:#f3dbea}}#universe[data-scene=game] #utility-controls #language,#universe[data-scene=game] #utility-controls #lcd-open{display:none}
 #info-about[aria-expanded=true]{color:#f3dbea}
+/* About and the outside links stay together, so a narrow footer wraps between the two groups, never mid-group. */
+.info-links{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .info-about a{display:inline-flex;align-items:center;min-height:44px;padding:0 4px}
 #info #info-copy{margin:0 0 6px;max-width:none;font-size:12px;line-height:1.7}
 #info #info-copy[hidden]{display:none}
@@ -733,12 +737,6 @@ body{font-family:var(--reading-type)}
 #cue-action button{pointer-events:auto}
 
 /* Make a new song: a deliberate, confirmed step. */
-#info .restart-confirm{margin:4px 0 8px;padding:12px;border-radius:8px;background:#2a1520;box-shadow:inset 0 0 0 1px #6f3466}
-#info .restart-confirm p{margin:0 0 10px;font-size:13px;line-height:1.5;color:#f3dbea}
-#info .restart-confirm-actions{display:flex;gap:6px;justify-content:flex-end}
-#info .restart-confirm-actions button{min-height:44px;padding:0 14px;border-radius:7px;border:1px solid #4a2a52;background:transparent;color:#e9d4ee;font:13px Arial,'PingFang SC',sans-serif;cursor:pointer}
-#info .restart-confirm-actions #restart-song-yes{border-color:#c2577f;background:#c2577f;color:#fff1ed}
-#info .restart-confirm[hidden]{display:none}
 
 /* Entrance (intro.js): a gift box alone on the night sky; on the tap, the club canvas runs under the real opening
    screen, so the hand-off is one frame. */
@@ -792,7 +790,7 @@ body{height:100dvh;container-type:size}
 :root.rotated{--safe-top:env(safe-area-inset-right,0px);--safe-right:env(safe-area-inset-bottom,0px);--safe-bottom:env(safe-area-inset-left,0px);--safe-left:env(safe-area-inset-top,0px)}
 :root.rotated body{position:absolute;left:0;top:0;width:100dvh;height:100vw;transform-origin:0 0;transform:translateX(100vw) rotate(90deg)}
 /* Modal dialogs sit in the top layer, outside the turned body: centre and turn each one itself. */
-:root.rotated :is(#info,#lcd-dialog,#fullscreen-sheet)[open]{inset:auto;left:50%;top:50%;margin:0;transform:translate(-50%,-50%) rotate(90deg)}
+:root.rotated :is(#info,#lcd-dialog,#fullscreen-sheet,#redo-dialog)[open]{inset:auto;left:50%;top:50%;margin:0;transform:translate(-50%,-50%) rotate(90deg)}
 :root.rotated :is(#info,#fullscreen-sheet){width:min(440px,calc(100dvh - 28px));max-height:calc(100vw - 24px)}
 :root.rotated #lcd-dialog{width:min(460px,calc(100dvh - 28px),calc(100vw - 66px));max-height:calc(100vw - 24px)}
 /* Volume: the speaker mutes on a tap; the slider sits beside it with a mouse, or opens below it on a long press. */
@@ -900,3 +898,20 @@ body{height:100dvh;container-type:size}
   .premiere-back:hover{color:#fff}
 }
 @media(prefers-reduced-motion:reduce){#premiere-end>div{animation:none}}
+
+/* Make a new song?: Help's surface, Cancel first and quiet, the destructive choice in a warning red (not the
+   site's pink). It comes in with opacity and a 0.96 scale; the scale property leaves sideways mode's rotate alone. */
+#redo-dialog{width:min(360px,calc(100cqw - 32px));padding:22px 22px 16px;border:1px solid #785a8b;border-radius:12px;background:#1a1223;color:var(--ink);box-shadow:0 30px 100px #0008}
+#redo-dialog[open]{animation:redo-in 200ms cubic-bezier(.32,.72,0,1)}
+@keyframes redo-in{from{opacity:0;scale:.96}}
+#redo-dialog::backdrop{background:#09050fbb;backdrop-filter:blur(8px)}
+#redo-dialog h2{margin:0;font:600 18px/1.35 var(--reading-type);color:#fff1ed;text-wrap:balance}
+#redo-dialog p{margin:10px 0 0;font:13px/1.6 var(--reading-type);color:#d0bbdf}
+.redo-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.redo-actions button{min-height:44px;padding:0 16px;border:0;border-radius:8px;font:600 13px var(--reading-type);cursor:pointer;touch-action:manipulation;transition:scale 120ms ease-out,background-color 150ms ease-out}
+.redo-actions button:active{scale:.96}
+.redo-actions button:focus-visible{outline:2px solid #eee;outline-offset:2px}
+#redo-cancel{background:#2a1c33;box-shadow:inset 0 0 0 1px #4a2a52;color:#e9d4ee}
+#redo-confirm{background:#3a1618;box-shadow:inset 0 0 0 1px #d0605a;color:#ffb3a8}
+@media(hover:hover) and (pointer:fine){#redo-cancel:hover{background:#33223d}#redo-confirm:hover{background:#4a1c1e}}
+@media(prefers-reduced-motion:reduce){#redo-dialog[open]{animation:none}.redo-actions button{transition:none}}

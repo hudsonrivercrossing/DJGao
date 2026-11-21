@@ -296,7 +296,7 @@ function choosePremiereStory(){
   for(const entry of entries)entry.promise.then(file=>{
     if(!file&&!premiere.storyFailed){
       premiere.storyFailed=true;
-      premiere.status=T('The Story clips could not load.','快拍的两段没能加载。');
+      premiere.status=T('The Story clips could not load.','Story 的两段没能加载。');
       if(premiere.view==='story')setPremiereView('choose','#premiere-reels');
       else paintPremiere();
     }else if(file&&entries.every(other=>other.file)&&premiere.view==='story')$('#premiere-story-share').focus({preventScroll:true});
@@ -452,28 +452,28 @@ function paintPremiere(){
     ?T('In the share sheet, pick Instagram → Reels.','在分享菜单里选 Instagram → Reels。')
     :T('Save the video, then post it as a Reel in Instagram.','先保存视频，再在 Instagram 里发 Reels。');
   $('#premiere-story').hidden=premiere.storyFailed;
-  $('#premiere-story-label').textContent=T('Story','快拍');
+  $('#premiere-story-label').textContent=T('Story','Story');
   $('#premiere-story-hint').textContent=T('Two clips · 0:44 each','两段 · 每段 0:44');
   const parts=premiereStory.map(spec=>premiereFetches.get(spec.url)).filter(Boolean);
   const partsReady=parts.length===2&&parts.every(part=>part.file);
   const storyShare=$('#premiere-story-share');
   storyShare.hidden=!partsReady;
-  storyShare.textContent=T('Share 2 clips','分享 2 段');
+  storyShare.textContent=T('Share 2 Story clips','分享 2 段 Story');
   $('#premiere-story-progress').hidden=partsReady;
   const storyPercent=Math.floor(parts.reduce((sum,part)=>sum+part.percent,0)/2);
-  $('#premiere-story-progress').textContent=T('Getting the Story clips… ','正在准备快拍… ')+storyPercent+'%';
+  $('#premiere-story-progress').textContent=T('Getting the Story clips… ','正在准备 Story… ')+storyPercent+'%';
   if(view==='story'&&!premiere.storyFailed){
-    if(partsReady)note=premiere.heard.story?T('The Story clips are ready.','快拍的两段准备好了。'):'';
-    else{premiere.heard.story=true;note=premiereNote(T('Getting the Story clips','正在准备快拍'),storyPercent);}
+    if(partsReady)note=premiere.heard.story?T('The Story clips are ready.','Story 的两段准备好了。'):'';
+    else{premiere.heard.story=true;note=premiereNote(T('Getting the Story clips','正在准备 Story'),storyPercent);}
   }
   announcePremiere(note);
-  paintPremiereHint('#premiere-story-hint2',T(['Post part 1 first, ','then part 2.'],['先发第 1 段，','再发第 2 段。']));
+  paintPremiereHint('#premiere-story-hint2',T(['Post Story part 1 first, ','then part 2.'],['先发 Story 第 1 段，','再发第 2 段。']));
   premiereStory.forEach((spec,index)=>{
     const link=$('#premiere-part-'+(index+1)),saved=premiere.savedParts[index],n=index+1;
-    link.textContent=saved?T('Part '+n+' saved ✓','第 '+n+' 段已保存 ✓'):T('Save part '+n,'保存第 '+n+' 段');
+    link.textContent=saved?T('Story part '+n+' saved ✓','Story 第 '+n+' 段已保存 ✓'):T('Save Story part '+n,'保存 Story 第 '+n+' 段');
     if(saved)link.dataset.saved='';else delete link.dataset.saved;
   });
-  paintPremiereHint('#premiere-saves-hint',T(['Save both, ','then post them as Stories ','in order in Instagram.'],['两段都保存，','再在 Instagram 里','按顺序发快拍。']));
+  paintPremiereHint('#premiere-saves-hint',T(['Save both, ','then post them as Stories ','in order in Instagram.'],['两段都保存，','再在 Instagram 里','按顺序发 Story。']));
   $('#premiere-back').textContent=T('← Back','← 返回');
   $('#premiere-status').textContent=premiere.status;
   if(playing)tickPremiere();

@@ -561,7 +561,7 @@ function copy(){document.documentElement.lang=language==='zh'?'zh-CN':'en';$('#l
   $('#study-close').setAttribute('aria-label',T('Close','关闭'));
   if(studyTab)renderStudy();$('#gesture-hint').textContent=T('Play keys · drag knobs · 1× to zoom / drag body to pan','点琴键 · 拖旋钮 · 点 1× 放大，拖动机身移动');$('#info-title').textContent=T('Help','帮助');$('#info-button').setAttribute('aria-label',T('Help','帮助'));$('#info-close').setAttribute('aria-label',T('Close','关闭'));$('#info-song').setAttribute('aria-label',T('My song','我的歌'));$('#info-about').textContent=T('About','关于');$('#info-lang').textContent=language==='zh'?'English':'中文';$('#info-screen').textContent=T('Bigger screen','放大屏幕');syncInfoSong();syncFullscreenButton();syncFullscreenSheet();$('#rotate-hint').setAttribute('aria-label',T('Turn sideways to see the whole instrument','横过来看整台机器'));
   $('#info-copy').textContent=T('The guided song follows a Baud Girl V102 arrangement score and uses a browser synth. Product image: Baud Girl / Madeline.','生日歌引导采用 Baud Girl V102 的编曲谱，使用网页合成器发声。产品图片：Baud Girl / Madeline。');
-  $('#restart-song').textContent=T('Make a new song','重新做一首');$('#restart-song-question').textContent=T('Delete the birthday song you recorded and start again from choosing a mode? This cannot be undone.','删掉现在录的生日歌，从选模式重新开始？这一步不能撤销。');$('#restart-song-no').textContent=T('Cancel','取消');$('#restart-song-yes').textContent=T('Delete and start over','删掉，重新做');$('#hardware-done').textContent=T('Completed on my FM-1 ✓','我已在真机完成这关 ✓');
+  $('#restart-song').textContent=T('Make a new song','重新做一首');$('#redo-title').textContent=T('Make a new song?','重新做一首？');$('#redo-body').textContent=T('This song will be deleted and you\'ll start again from choosing a mode. This can\'t be undone.','现在这首会被删掉，从选模式重新开始。这一步不能撤销。');$('#redo-cancel').textContent=T('Cancel','取消');$('#redo-confirm').textContent=T('Delete and redo','删掉，重做');$('#hardware-done').textContent=T('Completed on my FM-1 ✓','我已在真机完成这关 ✓');
   $('#hardware-done').hidden=journey;
   if(journey){
     const pass=birthdayJourney.pass;
@@ -672,7 +672,7 @@ function complete(force=false){
 
 function interludeActions(){
   if($('#interlude').dataset.celebrating)return [$('#birthday-skip')];
-  return $$('#interlude button:not(:disabled), #interlude summary, #interlude a[href]')
+  return $$('#interlude button:not(:disabled), #interlude summary, #interlude a[href], #interlude [role="slider"]')
     .filter(element=>element.getClientRects().length&&!element.closest('[inert]'));
 }
 $('#interlude').addEventListener('keydown',event=>{
@@ -690,7 +690,13 @@ $('#interlude').addEventListener('keydown',event=>{
     else{closeBirthdayPlayer();$('#info-button').focus({preventScroll:true});}
   }
 });
-$('#birthday-play').onclick=toggleBirthdayMusic;
+$('#birthday-play').onclick=()=>toggleBirthdayMusic();
+const birthdayTimeline=$('#birthday-timeline');
+birthdayTimeline.addEventListener('pointerdown',startBirthdayDrag);
+birthdayTimeline.addEventListener('pointermove',moveBirthdayDrag);
+birthdayTimeline.addEventListener('pointerup',endBirthdayDrag);
+birthdayTimeline.addEventListener('pointercancel',endBirthdayDrag);
+birthdayTimeline.addEventListener('keydown',birthdayTimelineKey);
 setupPremiere();
 $('#mode-standard').onclick=()=>chooseBirthdayMode('standard');
 $('#mode-hard').onclick=()=>chooseBirthdayMode('hard');
@@ -718,13 +724,32 @@ function syncInfoSong(){
   $('#restart-song').hidden=!birthdaySongHasProgress();
   $('#info-song').hidden=$('#info-open-song').hidden&&$('#restart-song').hidden;
 }
-$('#info-button').onclick=()=>{syncInfoSong();$('#restart-song-confirm').hidden=true;$('#info-copy').hidden=true;$('#info-about').setAttribute('aria-expanded','false');$('#info').showModal();$('#guide-button').focus()};
+$('#info-button').onclick=()=>{syncInfoSong();$('#info-copy').hidden=true;$('#info-about').setAttribute('aria-expanded','false');$('#info').showModal();$('#guide-button').focus()};
 // Closed with Escape or ×, focus goes back to the ? button; a row that opened something keeps its own focus.
 $('#info').addEventListener('close',()=>{const active=document.activeElement;if(!active||active===document.body||active.closest?.('#info'))$('#info-button').focus({preventScroll:true})});
 $('#info-open-song').onclick=()=>{$('#info').close();if(birthdayJourney?.step==='finished')openBirthdayPlayer();else resumeBirthdayJourney();};
 [['#info-lang','#language'],['#info-screen','#lcd-open']].forEach(([proxy,target])=>$(proxy).onclick=()=>{$('#info').close();$(target).click()});
 $('#info-about').onclick=()=>{const open=$('#info-copy').hidden;$('#info-copy').hidden=!open;$('#info-about').setAttribute('aria-expanded',String(open));};
-$('#restart-song').onclick=()=>{$('#restart-song-confirm').hidden=false;$('#restart-song-no').focus()};$('#restart-song-no').onclick=()=>{$('#restart-song-confirm').hidden=true;$('#restart-song').focus()};$('#restart-song-yes').onclick=()=>{$('#restart-song-confirm').hidden=true;$('#info').close();startNewBirthdaySong()};['#guide-button','#advanced-button'].forEach(id=>$(id).addEventListener('click',()=>$('#info').close()));$('#info-close').onclick=()=>$('#info').close();
+$('#restart-song').onclick=()=>openRedoDialog($('#restart-song'));
+// "Make a new song" from Help or the card: one confirm dialog. Cancel (its button, Escape or the backdrop)
+// changes nothing and gives focus back to the link that opened it; Delete and redo starts over.
+let redoOpener=null;
+function openRedoDialog(opener){
+  redoOpener=opener||null;
+  $('#redo-dialog').showModal();
+  $('#redo-cancel').focus();
+}
+function cancelRedo(){if($('#redo-dialog').open)$('#redo-dialog').close();}
+$('#redo-cancel').onclick=cancelRedo;
+$('#redo-confirm').onclick=()=>{
+  redoOpener=null;
+  $('#redo-dialog').close();
+  if($('#info').open)$('#info').close();
+  startNewBirthdaySong();
+};
+$('#redo-dialog').addEventListener('click',event=>{if(event.target===$('#redo-dialog'))cancelRedo();});
+$('#redo-dialog').addEventListener('close',()=>{const back=redoOpener;redoOpener=null;if(back&&back.isConnected!==false)back.focus({preventScroll:true});});
+['#guide-button','#advanced-button'].forEach(id=>$(id).addEventListener('click',()=>$('#info').close()));$('#info-close').onclick=()=>$('#info').close();
 
 function escapeText(s){return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}
 function manualPages(){

@@ -32,7 +32,7 @@ python3 tools/package_site.py
 
 ## 分享视频
 
-分享视频是三个固定的预渲染文件，放在 `site/assets/share/`：完整版 `happy-birthday.mp4`（Blender 版夜店现场，困难模式的固定生日歌，1080×1920、30 fps、87.3 秒、3.5 Mbps，约 40 MB），以及快拍用的两半 `happy-birthday-story-1.mp4` / `happy-birthday-story-2.mp4`（在 43.66 秒处平分，各约 21 MB）。三个 mp4 都不进 git：本地放在这个路径，部署时从 GitHub Release 取（Release 里放这三个文件）。封面帧 `happy-birthday-poster.webp`（540×960）进 git。网站在她进入第四版时后台下载完整版；生日卡上的「看你的生日现场」全屏播放（`site/premiere.js`），播完后分享：Reels 用完整版，快拍只在选它时才下载两半。重新渲染见 `tools/share-video-blender/README.md`（编码时用 3.5 Mbps，在 43.66 秒强制关键帧再切两半）。
+分享视频是三个固定的预渲染文件，放在 `site/assets/share/`：完整版 `happy-birthday.mp4`（Blender 版夜店现场，困难模式的固定生日歌，1080×1920、30 fps、87.3 秒、3.5 Mbps，约 40 MB），以及Story 用的两半 `happy-birthday-story-1.mp4` / `happy-birthday-story-2.mp4`（在 43.66 秒处平分，各约 21 MB）。三个 mp4 都不进 git：本地放在这个路径，部署时从 GitHub Release 取（Release 里放这三个文件）。封面帧 `happy-birthday-poster.webp`（540×960）进 git。网站在她进入第四版时后台下载完整版；生日卡上的「看你的生日现场」全屏播放（`site/premiere.js`），播完后分享：Reels 用完整版，Story 只在选它时才下载两半。重新渲染见 `tools/share-video-blender/README.md`（编码时用 3.5 Mbps，在 43.66 秒强制关键帧再切两半）。
 
 ## 部署到 GitHub Pages
 

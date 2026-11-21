@@ -186,7 +186,7 @@ test('The stylesheet sizes against the body frame, and sideways mode turns it an
   assert.ok(!/\d(vw|dvh|vh)\b/.test(css.slice(0, css.indexOf('body{height:100dvh;container-type:size}'))), 'layout units are container units');
   assert.match(css, /body\{height:100dvh;container-type:size\}/);
   assert.match(css, /:root\.rotated body\{[^}]*width:100dvh;height:100vw;transform-origin:0 0;transform:translateX\(100vw\) rotate\(90deg\)\}/);
-  assert.match(css, /:root\.rotated :is\(#info,#lcd-dialog,#fullscreen-sheet\)\[open\]\{[^}]*rotate\(90deg\)/);
+  assert.match(css, /:root\.rotated :is\(#info,#lcd-dialog,#fullscreen-sheet,#redo-dialog\)\[open\]\{[^}]*rotate\(90deg\)/);
   assert.ok(!/transition:all/.test(css));
 });
 

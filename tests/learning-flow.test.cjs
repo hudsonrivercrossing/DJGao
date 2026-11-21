@@ -587,7 +587,8 @@ test('After the last key the cheer waits for a tap, then the card shows one time
   const segments=nodes.get('#birthday-timeline').children;
   assert.equal(segments.length,4);
   segments.forEach((segment,pass)=>{
-    assert.match(segment.getAttribute('aria-label'),new RegExp('第 '+(pass+1)+' 版'));
+    assert.equal(segment.dataset.take,String(pass));
+    assert.match(site('finale.js'),/const segment=document.createElement\('div'\)/,'takes are parts of the slider, not tab stops of their own');
     assert.ok(segment.children[0].children.length>0,'her notes are drawn inside take '+(pass+1));
   });
   assert.equal(segments[0].getAttribute('aria-current'),'true');
@@ -598,17 +599,20 @@ test('After the last key the cheer waits for a tap, then the card shows one time
   assert.equal(nodes.get('#win-detail').textContent,'四版 · '+clock+' · 你亲手弹了 '+played+' 个音');
 });
 
-test('Once the show is there it is the card’s primary action; Play all steps down and FM-1 is a quiet link',async()=>{
+test('The show is the card’s one filled button; play is a quiet ring at the start of the status line; FM-1 is a quiet link',async()=>{
   const html=site('index.html');
   const player=html.slice(html.indexOf('id="birthday-player-view"'),html.indexOf('id="birthday-hardware"'));
-  assert.equal(player.match(/birthday-primary/g).length,1,'Play all is primary only while there is no show');
-  assert.match(player,/<button id="birthday-play"[^>]*class="birthday-primary"/);
+  assert.ok(!player.includes('birthday-primary'),'no big Play all row');
+  assert.match(player,/<div id="birthday-timeline" role="slider" tabindex="0"[^>]*><\/div>\s*<p class="birthday-now"><button id="birthday-play" type="button" aria-label="播放全部四版" aria-pressed="false"><\/button><span id="birthday-status"/);
   assert.match(player,/<button id="premiere-open" type="button" hidden>/);
-  assert.ok(player.indexOf('id="premiere-open"')<player.indexOf('id="birthday-play"')&&player.indexOf('id="birthday-play"')<player.indexOf('id="birthday-fm1"'),'show, Play all, then FM-1');
+  assert.ok(player.indexOf('id="birthday-play"')<player.indexOf('id="premiere-open"')&&player.indexOf('id="premiere-open"')<player.indexOf('id="birthday-fm1"'),'player, show, then FM-1');
   assert.match(player,/<button id="birthday-fm1" type="button" class="birthday-link">/);
   const css=site('style.css');
   assert.match(css,/#premiere-open\{[^}]*background:#fa8bc7/);
-  assert.match(css,/#interlude\[data-song\]\[data-premiere\] #birthday-play\{[^}]*background:#2a1c33/);
+  assert.match(css,/#birthday-play\{[^}]*width:44px;height:44px[^}]*background:none;box-shadow:inset 0 0 0 1\.5px #6b4a73/);
+  assert.match(css,/#birthday-play:active\{scale:\.96\}/);
+  assert.match(css,/#birthday-play:focus-visible\{outline:2px solid #eee/);
+  assert.match(css,/#birthday-time\{[^}]*font-variant-numeric:tabular-nums/);
   assert.match(css,/\.birthday-link\{[^}]*min-height:44px[^}]*background:none/);
   assert.match(css,/@media\(hover:hover\) and \(pointer:fine\)\{[^@]*\.birthday-link:hover\{color:#d8c8e2;text-decoration:underline\}/);
   for(const gone of ['share-video','share-more','share-download','birthday-share','birthday-roll','birthday-reel','birthday-takes','birthday-recap','birthday-explore','birthday-manual','birthday-advanced','share-make','share-dialog'])assert.ok(!html.includes('id="'+gone+'"'),gone);
@@ -619,7 +623,7 @@ test('Once the show is there it is the card’s primary action; Play all steps d
   await loadFull();
   assert.equal(nodes.get('#premiere-open').hidden,false);
   assert.equal(nodes.get('#premiere-open-label').textContent,'看你的生日现场');
-  assert.equal(nodes.get('#birthday-play').textContent,'播放全部');
+  assert.equal(nodes.get('#birthday-play').getAttribute('aria-label'),'播放全部四版');
   assert.equal('premiere' in nodes.get('#interlude').dataset,true,'the card marks the show as its primary');
   assert.equal(nodes.get('#birthday-fm1').textContent,'也可以在真的 FM-1 上弹 →');
   // Without the video (offline copy), Play all stays the primary action.
@@ -836,7 +840,7 @@ test('Share copies the caption and asks where it goes; Reels shares one file nam
   assert.equal(nodes.get('#premiere-choose').hidden,false);
   assert.equal(nodes.get('#premiere-choose-title').textContent,'发到哪里？');
   assert.equal(nodes.get('#premiere-reels-hint').textContent,'在分享菜单里选 Instagram → Reels。');
-  assert.equal(nodes.get('#premiere-story-label').textContent,'快拍');
+  assert.equal(nodes.get('#premiere-story-label').textContent,'Story');
   nodes.get('#premiere-reels').onclick();
   await p.flush();
   assert.deepEqual(p.json('shared'),[['happy-birthday.mp4']]);
@@ -871,14 +875,14 @@ test('Story downloads only the two halves, then Share 2 clips shares them in ord
   assert.deepEqual(p.json('fetched'),[p.full,...p.parts]);
   assert.equal(nodes.get('#premiere-story-view').hidden,false);
   assert.equal(nodes.get('#premiere-story-share').hidden,true,'no share until both are here');
-  assert.equal(nodes.get('#premiere-story-progress').textContent,'正在准备快拍… 0%');
+  assert.equal(nodes.get('#premiere-story-progress').textContent,'正在准备 Story… 0%');
   await p.load(p.parts[0]);
-  assert.equal(nodes.get('#premiere-story-progress').textContent,'正在准备快拍… 50%');
+  assert.equal(nodes.get('#premiere-story-progress').textContent,'正在准备 Story… 50%');
   await p.load(p.parts[1]);
   const button=nodes.get('#premiere-story-share');
   assert.equal(button.hidden,false);
-  assert.equal(button.textContent,'分享 2 段');
-  assert.equal(nodes.get('#premiere-story-hint2').children.map(span=>span.textContent).join(''),'先发第 1 段，再发第 2 段。');
+  assert.equal(button.textContent,'分享 2 段 Story');
+  assert.equal(nodes.get('#premiere-story-hint2').children.map(span=>span.textContent).join(''),'先发 Story 第 1 段，再发第 2 段。');
   assert.equal(p.doc.activeElement,button);
   button.onclick();
   await p.flush();
@@ -902,8 +906,8 @@ test('Story falls back to saving both parts when two clips cannot be shared toge
   for(const p of [await toSaves({files:1}),await toSaves({},`navigator.share=async()=>{throw Object.assign(new Error('no'),{name:'NotAllowedError'});}`)]){
     const {nodes}=p;
     assert.equal(nodes.get('#premiere-saves').hidden,false);
-    assert.equal(nodes.get('#premiere-part-1').textContent,'保存第 1 段');
-    assert.equal(nodes.get('#premiere-part-2').textContent,'保存第 2 段');
+    assert.equal(nodes.get('#premiere-part-1').textContent,'保存 Story 第 1 段');
+    assert.equal(nodes.get('#premiere-part-2').textContent,'保存 Story 第 2 段');
     assert.equal(nodes.get('#premiere-part-1').download,'happy-birthday-story-1.mp4');
     assert.equal(nodes.get('#premiere-part-2').download,'happy-birthday-story-2.mp4');
     assert.match(nodes.get('#premiere-part-1').href,/^blob:/);
@@ -988,8 +992,8 @@ test('Saving the parts one by one ticks each off and moves to the next',async()=
   await p.load(p.parts[0]);await p.load(p.parts[1]);
   nodes.get('#premiere-story-share').onclick();
   nodes.get('#premiere-part-1').onclick();
-  assert.equal(nodes.get('#premiere-part-1').textContent,'第 1 段已保存 ✓');
-  assert.equal(nodes.get('#premiere-part-2').textContent,'保存第 2 段');
+  assert.equal(nodes.get('#premiere-part-1').textContent,'Story 第 1 段已保存 ✓');
+  assert.equal(nodes.get('#premiere-part-2').textContent,'保存 Story 第 2 段');
   assert.equal(p.doc.activeElement,nodes.get('#premiere-part-2'));
 });
 
@@ -1035,14 +1039,14 @@ test('Story progress is announced in quarters and once when ready; the visible l
   nodes.get('#premiere-share').onclick();
   nodes.get('#premiere-story').onclick();
   const voice=nodes.get('#premiere-announce');
-  assert.equal(voice.textContent,'正在准备快拍');
+  assert.equal(voice.textContent,'正在准备 Story');
   run(`feeds[${JSON.stringify(p.parts[0])}].respond();feeds[${JSON.stringify(p.parts[0])}].push(70)`);
   await p.flush();
-  assert.equal(nodes.get('#premiere-story-progress').textContent,'正在准备快拍… 35%');
-  assert.equal(voice.textContent,'正在准备快拍… 25%');
+  assert.equal(nodes.get('#premiere-story-progress').textContent,'正在准备 Story… 35%');
+  assert.equal(voice.textContent,'正在准备 Story… 25%');
   run(`feeds[${JSON.stringify(p.parts[0])}].push(30);feeds[${JSON.stringify(p.parts[0])}].end()`);
   await p.load(p.parts[1]);
-  assert.equal(voice.textContent,'快拍的两段准备好了。');
+  assert.equal(voice.textContent,'Story 的两段准备好了。');
   assert.match(site('index.html'),/<p id="premiere-story-progress" class="premiere-hint" aria-hidden="true">/);
   assert.match(site('style.css'),/\.premiere-hint>span\{display:inline-block\}/);
 });
@@ -1157,7 +1161,7 @@ test('A video that cannot be fetched quietly takes its option away',async()=>{
   assert.equal(p.nodes.get('#premiere-choose').hidden,false,'back to the choice');
   assert.equal(p.nodes.get('#premiere-story').hidden,true,'without Story');
   assert.equal(p.nodes.get('#premiere-reels').hidden,false);
-  assert.equal(p.nodes.get('#premiere-status').textContent,'快拍的两段没能加载。');
+  assert.equal(p.nodes.get('#premiere-status').textContent,'Story 的两段没能加载。');
 });
 
 test('The site no longer makes video: no recorder, no three.js, and the offline file does not carry the video',()=>{
@@ -1184,12 +1188,14 @@ test('Play all four walks the takes in order',async()=>{
   assert.equal(run('djPlays.length'),1);
   assert.equal(run('djPlays[0].events.length'),run('djTimeline(birthdayJourney.work).events.length'));
   assert.equal(run('djPlays[0].options.from'),0);
-  assert.equal(nodes.get('#birthday-play').textContent,'暂停');
+  assert.equal(nodes.get('#birthday-play').getAttribute('aria-label'),'暂停');
+  assert.equal(nodes.get('#birthday-play').getAttribute('aria-pressed'),'true');
   const seen=[];
   while(run('birthdayMusicPlaying')){const a=nodes.get('#interlude').dataset.arrangement;if(seen.at(-1)!==a)seen.push(a);fireNextBirthdayTimer();}
   assert.deepEqual(seen,['0','1','2','3']);
   assert.equal(run('birthdayTimers.size'),0);
-  assert.equal(nodes.get('#birthday-play').textContent,'播放全部');
+  assert.equal(nodes.get('#birthday-play').getAttribute('aria-label'),'播放全部四版');
+  assert.equal(nodes.get('#birthday-play').getAttribute('aria-pressed'),'false');
 });
 
 test('Tapping a timeline segment plays from that take; pause keeps the place',async()=>{
@@ -1207,12 +1213,13 @@ test('Tapping a timeline segment plays from that take; pause keeps the place',as
   assert.equal(segments[2].getAttribute('aria-current'),'true');
   assert.equal(segments[0].getAttribute('aria-current'),undefined);
   assert.equal(nodes.get('#birthday-status').textContent,run('T(...djTakes[2].title)'));
-  // The primary button pauses: the player is torn down and the place is kept.
+  // The play button pauses: the player is torn down and the place is kept, with the playhead line left there.
   nodes.get('#birthday-play').onclick();
   assert.equal(run('djPlays[0].stopped'),true);
   assert.equal(run('birthdayMusicPlaying'),false);
   assert.equal(run('birthdayTimers.size'),0);
-  assert.equal(nodes.get('#birthday-play').textContent,'继续播放');
+  assert.equal(nodes.get('#birthday-play').getAttribute('aria-label'),'播放全部四版');
+  assert.equal('head' in segments[2].dataset,true);
   nodes.get('#birthday-play').onclick();await Promise.resolve();
   assert.equal(run('djPlays[1].options.from'),start);
   // Another segment while playing jumps there.
@@ -1220,6 +1227,63 @@ test('Tapping a timeline segment plays from that take; pause keeps the place',as
   assert.equal(run('djPlays[1].stopped'),true);
   assert.equal(run('djPlays[2].options.from'),run('djTimeline(birthdayJourney.work).takeStarts[1]'));
   assert.equal(nodes.get('#interlude').dataset.arrangement,'1');
+});
+
+test('The timeline is a slider: arrows move 5 s, Home and End jump, and while playing it restarts from there',async()=>{
+  const {run,nodes,finishedStandardWork}=journeyPage();
+  await finishedStandardWork();
+  nodes.get('#birthday-skip').onclick();
+  run('djPlays.length=0');
+  const timeline=nodes.get('#birthday-timeline'),key=name=>timeline.listeners.keydown.forEach(f=>f({key:name,preventDefault(){}}));
+  const length=run('djTimeline(birthdayJourney.work).length');
+  key('ArrowRight');key('ArrowRight');
+  assert.equal(run('birthdayPosition'),10,'paused: the place moves and waits');
+  assert.equal(run('djPlays.length'),0);
+  assert.equal(timeline.getAttribute('aria-valuenow'),'10');
+  assert.equal(timeline.getAttribute('aria-valuemax'),String(Math.floor(length)));
+  assert.equal(timeline.getAttribute('aria-valuetext'),run('T(...djTakes[0].title)')+' · 0:10 / '+nodes.get('#birthday-time').textContent.split(' / ')[1]);
+  key('ArrowLeft');
+  assert.equal(run('birthdayPosition'),5);
+  key('End');
+  assert.equal(run('birthdayPosition'),length);
+  key('Home');
+  assert.equal(run('birthdayPosition'),0);
+  nodes.get('#birthday-play').onclick();await Promise.resolve();
+  key('ArrowRight');await Promise.resolve();
+  assert.equal(run('djPlays[0].stopped'),true);
+  assert.equal(run('djPlays[1].options.from'),5,'playing: it plays on from the new place');
+  assert.equal(run('birthdayMusicPlaying'),true);
+  assert.match(site('app.js'),/#interlude \[role="slider"\]/,'the slider is in the card’s Tab cycle');
+});
+
+test('Dragging on the timeline scrubs and plays on; a tap while playing seeks there, while stopped plays the take',async()=>{
+  const {run,nodes,finishedStandardWork}=journeyPage();
+  await finishedStandardWork();
+  nodes.get('#birthday-skip').onclick();
+  run('djPlays.length=0');
+  const timeline=nodes.get('#birthday-timeline'),segments=timeline.children;
+  const pointer=(type,x)=>timeline.listeners[type].forEach(f=>f({pointerId:1,clientX:x,clientY:420}));
+  const [s0,s1]=run('djTimeline(birthdayJourney.work).takeStarts'),at=x=>s0+x/700*(s1-s0);
+  // Every fake segment spans x 0–700, so the point lands in the first take at x/700 of its length.
+  segments[2].onclick();await Promise.resolve();
+  assert.equal(run('djPlays[0].options.from'),run('djTimeline(birthdayJourney.work).takeStarts[2]'),'a tap from the keyboard-less fake has no point: plays the take');
+  pointer('pointerdown',100);pointer('pointermove',350);
+  assert.equal(run('djPlays[0].stopped'),true,'paused while dragging');
+  assert.ok(Math.abs(run('birthdayPosition')-at(350))<1e-9);
+  pointer('pointerup',350);await Promise.resolve();
+  assert.ok(Math.abs(run('djPlays[1].options.from')-at(350))<1e-9,'plays on from where the drag let go');
+  segments[0].onclick({clientX:350,clientY:420});
+  assert.equal(run('djPlays.length'),2,'the click that ends a drag does nothing more');
+  segments[0].onclick({clientX:175,clientY:420});await Promise.resolve();
+  assert.ok(Math.abs(run('djPlays[2].options.from')-at(175))<1e-9,'a tap while playing seeks to that point');
+  nodes.get('#birthday-play').onclick();
+  segments[3].onclick({clientX:175,clientY:420});await Promise.resolve();
+  assert.equal(run('djPlays[3].options.from'),run('djTimeline(birthdayJourney.work).takeStarts[3]'),'stopped: a tap plays from the take');
+  assert.match(site('finale.js'),/toLocalPoint\(event\.clientX,event\.clientY\)/,'sideways mode maps the pointer');
+  const css=site('style.css');
+  assert.match(css,/\.birthday-take::after\{[^}]*border-left:2px solid #fa8bc7;transform:translateX/);
+  assert.match(css,/#birthday-timeline\{[^}]*touch-action:none/);
+  assert.match(site('finale.js'),/paintBirthdayTimeline\(moving\(\)\?seconds:Math\.floor\(seconds\)\)/,'reduced motion: the playhead jumps once a second');
 });
 
 test('If audio startup stalls, the card offers a working play button',async()=>{
@@ -1526,24 +1590,70 @@ test('A chosen mode with nothing recorded yet offers the choice again on power-o
   assert.equal(page.run('birthdayJourney.work.mode'),'hard');
 });
 
-test('Make a new song asks first, and only Yes wipes the work and reopens the mode choice',async()=>{
+test('Make a new song asks first in one dialog, from Help or the card; only Delete and redo wipes the work',async()=>{
   const page=makePage();
   await page.run('start()');
+  const doc=page.run('document');
+  for(const node of page.nodes.values())node.focus=function(){doc.activeElement=this;};
   page.run("chooseBirthdayMode('standard');for(let i=0;i<3;i++)birthdayRecordHand(djNextTarget(birthdayJourney.work))");
   page.nodes.get('#info-button').onclick();
-  assert.equal(page.nodes.get('#restart-song').hidden,false);
-  assert.equal(page.nodes.get('#restart-song-confirm').hidden,true);
-  page.nodes.get('#restart-song').onclick();
-  assert.equal(page.nodes.get('#restart-song-confirm').hidden,false);
+  const dialog=page.nodes.get('#redo-dialog'),link=page.nodes.get('#restart-song');
+  assert.equal(link.hidden,false);
+  link.onclick();
+  assert.equal(dialog.open,true);
+  assert.equal(doc.activeElement,page.nodes.get('#redo-cancel'),'Cancel has focus');
+  assert.equal(page.nodes.get('#redo-title').textContent,'重新做一首？');
+  assert.equal(page.nodes.get('#redo-body').textContent,'现在这首会被删掉，从选模式重新开始。这一步不能撤销。');
+  assert.equal(page.nodes.get('#redo-confirm').textContent,'删掉，重做');
   assert.ok(page.local.get('fm1-dj-birthday-v1'),'asking alone deletes nothing');
-  page.nodes.get('#restart-song-no').onclick();
-  assert.equal(page.nodes.get('#restart-song-confirm').hidden,true);
+  const closeEvent=()=>(dialog.listeners.close||[]).forEach(f=>f());
+  page.nodes.get('#redo-cancel').onclick();closeEvent();
+  assert.equal(dialog.open,false);
+  assert.equal(doc.activeElement,link,'focus goes back to the link that opened it');
   assert.equal(page.run('birthdayJourney.work.takes[0].size'),3);
-  page.nodes.get('#restart-song').onclick();
-  page.nodes.get('#restart-song-yes').onclick();
+  // The backdrop cancels too.
+  link.onclick();
+  (dialog.listeners.click||[]).forEach(f=>f({target:dialog}));closeEvent();
+  assert.equal(dialog.open,false);
+  assert.equal(page.run('birthdayJourney.work.takes[0].size'),3);
+  link.onclick();
+  page.nodes.get('#redo-confirm').onclick();closeEvent();
   assert.equal(page.local.get('fm1-dj-birthday-v1')||null,null);
   assert.equal(page.run('birthdayJourney.step'),'mode');
   assert.equal(page.run('birthdayJourney.work?.takes?.[0]?.size??0'),0);
+  assert.equal(page.nodes.get('#info').open,false);
+  const html=site('index.html');
+  assert.ok(!html.includes('restart-song-confirm'),'the inline confirm is gone');
+  assert.match(site('style.css'),/#redo-dialog\[open\]\{animation:redo-in 200ms cubic-bezier\(\.32,\.72,0,1\)\}/);
+  assert.match(site('style.css'),/@keyframes redo-in\{from\{opacity:0;scale:\.96\}\}/);
+  assert.match(site('style.css'),/#redo-confirm\{[^}]*color:#ffb3a8/);
+});
+
+test('The finished card ends on one quiet line: the FM-1 steps and Make a new song, which opens the same dialog',async()=>{
+  const {run,nodes,finishedStandardWork}=journeyPage();
+  await finishedStandardWork();
+  nodes.get('#birthday-skip').onclick();
+  const doc=run('document');
+  for(const node of nodes.values())node.focus=function(){doc.activeElement=this;};
+  const redo=nodes.get('#birthday-redo');
+  assert.equal(redo.textContent,'重新做一首');
+  assert.match(site('index.html'),/<p class="birthday-links"><button id="birthday-fm1" type="button" class="birthday-link">[^<]*<\/button><span aria-hidden="true">·<\/span><button id="birthday-redo" type="button" class="birthday-link" aria-haspopup="dialog">/);
+  redo.onclick();
+  assert.equal(nodes.get('#redo-dialog').open,true);
+  nodes.get('#redo-cancel').onclick();(nodes.get('#redo-dialog').listeners.close||[]).forEach(f=>f());
+  assert.equal(doc.activeElement,redo);
+  assert.equal(run('birthdayJourney.step'),'finished');
+  redo.onclick();
+  nodes.get('#redo-confirm').onclick();
+  assert.equal(nodes.get('#interlude').hidden,true,'the card closes');
+  assert.equal(run('birthdayJourney.step'),'mode');
+});
+
+test('Help’s footer links to the project on GitHub after Baud Girl',()=>{
+  const html=site('index.html');
+  const footer=html.slice(html.indexOf('<footer class="info-about">'),html.indexOf('</footer>'));
+  assert.match(footer,/<a href="https:\/\/baudgirl\.com[^"]*"[^>]*>Baud Girl ↗<\/a><span aria-hidden="true">·<\/span><a id="info-github" href="https:\/\/github\.com\/hudsonrivercrossing\/DJGao" target="_blank" rel="noopener">GitHub ↗<\/a><\/span>$/);
+  assert.match(site('style.css'),/\.info-about a\{[^}]*min-height:44px/);
 });
 
 test('Make a new song is hidden while there is nothing to lose',async()=>{
@@ -1578,7 +1688,7 @@ test('Help holds Manual, Advanced, my song, then one quiet footer line; settings
   const html=site('index.html');
   const help=html.slice(html.indexOf('<dialog id="info"'),html.indexOf('</dialog>',html.indexOf('<dialog id="info"')));
   assert.deepEqual([...help.matchAll(/<button id="([^"]+)"/g)].map(match=>match[1]),
-    ['info-close','guide-button','advanced-button','info-open-song','restart-song','restart-song-no','restart-song-yes','info-lang','info-screen','info-about']);
+    ['info-close','guide-button','advanced-button','info-open-song','restart-song','info-lang','info-screen','info-about']);
   assert.ok(/<footer class="info-about">[^]*info-lang[^]*info-screen[^]*info-about/.test(help),'settings sit in the quiet footer');
   assert.ok(!/<h3\b/.test(help),'no one-item section headings');
   assert.ok(!/study-primary|info-actions/.test(help));
@@ -1657,7 +1767,7 @@ test('Opening the FM-1 steps pauses the song; Back resumes from the same place',
   assert.equal(run('birthdayMusicPlaying'),false);
   assert.equal(run('birthdayTimers.size'),0);
   nodes.get('#birthday-hardware-back').onclick();
-  assert.equal(nodes.get('#birthday-play').textContent,'继续播放');
+  assert.equal(nodes.get('#birthday-play').getAttribute('aria-label'),'播放全部四版');
   nodes.get('#birthday-play').onclick();await Promise.resolve();
   assert.equal(run('djPlays[1].options.from'),run('djTimeline(birthdayJourney.work).takeStarts[1]'));
 });
