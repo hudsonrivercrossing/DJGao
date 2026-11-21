@@ -1,0 +1,19 @@
+.DS_Store
+._*
+.env
+.env.*
+!.env.example
+node_modules/
+__pycache__/
+*.py[cod]
+.claude/
+spikes/
+
+# Build output and large media: rebuilt locally, never committed
+exports/
+site/assets/share/*.mp4
+*.mp4
+*.mov
+*.wav
+*.blend
+*.blend1

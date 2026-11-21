@@ -1,0 +1,43 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+const site = name => fs.readFileSync(path.join(__dirname,'../site',name),'utf8');
+
+const memory=()=>{const m=new Map();return {getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v),removeItem:k=>m.delete(k)};};
+const throwingGetterStorage=()=>Object.defineProperty({},'x',{});
+const quotaStorage=()=>({getItem:()=>null,setItem(){const e=new Error('full');e.name='QuotaExceededError';throw e;}});
+const context=vm.createContext({T:(en,zh)=>zh,localStorage:memory()});
+vm.runInContext(['learning-content.js','dj-score.js','dj-storage.js'].map(site).join('\n'),context);
+const run=code=>{const value=vm.runInContext(code,context);return value===undefined?value:JSON.parse(JSON.stringify(value,(k,v)=>v instanceof Set?{set:[...v]}:v));};
+const useStorage=store=>{context.localStorage=store;};
+const setStored=(key,raw)=>{useStorage(memory());context.localStorage.setItem(key,raw);};
+
+test('A saved work loads back with its sets, seed and pass',()=>{
+  useStorage(memory());
+  vm.runInContext("var work=(()=>{const w=djNewWork('hard',99);w.pass=2;w.takes[1].add('1:mel:0');return w})()",context);
+  assert.equal(run('djSaveWork(work)'),true);
+  const back=vm.runInContext('djLoadWork()',context);
+  assert.equal(back.seed,99);assert.equal(back.mode,'hard');assert.equal(back.pass,2);
+  assert.equal(back.takes[1].has('1:mel:0'),true);
+});
+test('No storage or a full quota: save returns false and nothing throws',()=>{
+  for(const store of [undefined,quotaStorage()]){
+    useStorage(store);
+    assert.equal(run("djSaveWork(djNewWork('standard',1))"),false);
+    assert.equal(run('djLoadWork()'),null);
+  }
+  useStorage({get getItem(){throw new Error('denied');},get setItem(){throw new Error('denied');}});
+  assert.equal(run("djSaveWork(djNewWork('standard',1))"),false);
+  assert.equal(run('djLoadWork()'),null);
+});
+test('Old or foreign data is ignored',()=>{
+  const good=JSON.parse(JSON.stringify({...vm.runInContext("djNewWork('hard',5)",context),takes:[[],[],[],[]]}));
+  const bad=['{"pass":2}','{"version":0,"takes":[]}','not json',
+    JSON.stringify({...good,mode:'easy'}),JSON.stringify({...good,seed:-1}),JSON.stringify({...good,seed:1.5}),
+    JSON.stringify({...good,takes:[[]]}),JSON.stringify({...good,mixes:[]})];
+  for(const raw of bad){setStored('fm1-dj-birthday-v1',raw);assert.equal(run('djLoadWork()'),null,raw);}
+  setStored('fm1-dj-birthday-v1',JSON.stringify(good));
+  assert.notEqual(run('djLoadWork()'),null);
+});

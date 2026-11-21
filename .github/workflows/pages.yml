@@ -1,0 +1,52 @@
+# Deploy site/ to GitHub Pages.
+# The share videos are not in git: they are attached to the GitHub Release "media"
+# and copied into site/assets/share/ here, so Pages serves them from the site's own origin.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the share videos from the "media" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p site/assets/share
+          if gh release download media --repo "$GITHUB_REPOSITORY" \
+               --pattern 'happy-birthday*.mp4' --dir site/assets/share --clobber; then
+            ls -l site/assets/share
+          else
+            echo "::warning::No \"media\" release yet; deploying without the share videos (the share button hides itself)."
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
