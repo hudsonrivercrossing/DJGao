@@ -633,7 +633,6 @@ function selectBirthdayTake(index){
     if(pass===index)segment.setAttribute('aria-current','true');
     else segment.removeAttribute('aria-current');
   });
-  $('#birthday-firmware-preview').textContent=T('Hear “'+name+'” in the firmware first','先用固件试听「'+name+'」');
 }
 
 // One take on the FM-1: its slots in play order (the summary), then rates, steps, lead wave, echo and presets.
@@ -665,7 +664,6 @@ function renderBirthdayHardware(){
   $('#birthday-step-download').textContent=T('Download','下载');
   $('#birthday-pattern-download').textContent=T('Download all four · .syx','下载全部四版 · .syx');
   $('#birthday-pattern-download').onclick=downloadBirthdayPatterns;
-  $('#birthday-firmware-preview').onclick=()=>openBirthdayFirmware(birthdaySelected);
   $('#birthday-step-send').textContent=T('Send','发送');
   $('#birthday-send-how').textContent=T('Open the .syx in Library and choose Send. The set fills Patterns 9–16 and then 1–8, chained in play order.','在 Library 打开 .syx，点 Send。这套歌先占 Pattern 9–16，再占 1–8，按播放顺序串好。');
   $('#birthday-hardware-source').textContent='Device Manager ↗';
@@ -725,15 +723,6 @@ function renderBirthdayPlayer(){
   $('#birthday-hardware-back').onclick=()=>showBirthdayHardware(false);
   renderBirthdayHardware();
   selectBirthdayTake(birthdaySelected);
-  paintBirthdayPlay();
-  paintBirthdayTimeline();
-}
-
-// Puts the playhead at the start of a take without playing, e.g. back from the firmware preview.
-function cueBirthdayTake(pass){
-  if(birthdayMusicPlaying)stopBirthdayMusic();
-  birthdayPosition=birthdaySet.takeStarts[pass];
-  selectBirthdayTake(pass);
   paintBirthdayPlay();
   paintBirthdayTimeline();
 }

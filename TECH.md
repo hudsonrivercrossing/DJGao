@@ -17,7 +17,7 @@ python3 -m http.server 8766 --directory site
 - `tools/`：打包、字体子集、App 图标、键位检查，以及分享视频的重渲染工具 `share-video-blender/`（Blender）。
 - `fonts-src/`：完整像素字体。
 - `preview/panel-geometry.json`：机器照片上 27 个键的位置。
-- `docs/`：固件模拟与 FM-1 真机资料；`docs/images/` 是 README 用的图。
+- `docs/`：FM-1 真机资料；`docs/images/` 是 README 用的图。
 
 ## 构建
 
@@ -52,8 +52,8 @@ python3 tools/package_site.py
 
 换视频：`gh release upload media <文件> --clobber`，再重新运行部署。
 
-## 固件与真机
+## 真机
 
-「固件」模式用 `fm1-emu` 在浏览器里运行用户自己选择的 `.fwsc`，说明见 `docs/fm1-emulation.md`。生日卡的「在 FM-1 上弹 →」导出 Baud Girl V102 的 pattern（`.syx`），资料见 `docs/birthday-hardware-research.md`，真机验证状态见 `docs/fm1-v102-dj-verification.md`。
+生日卡的「也可以在真的 FM-1 上弹 →」导出 Baud Girl V102 的 pattern（`.syx`），资料见 `docs/birthday-hardware-research.md`，真机验证状态见 `docs/fm1-v102-dj-verification.md`。
 
 作品保存在浏览器 `localStorage`（键名 `fm1-dj-birthday-v1`），不会离开这台设备。

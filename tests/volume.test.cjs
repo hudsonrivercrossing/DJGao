@@ -134,7 +134,7 @@ test('Volume and mute persist and are restored on the next load', () => {
   assert.equal(makePage({stored: {'djgao-volume-v1': '{oops'}}).run('volumePercent()'), 50);
 });
 
-test('Song playback, the intro and firmware mode play into the site bus, never straight to the speakers', () => {
+test('Song playback, the intro and the birthday show play into the site bus, never straight to the speakers', () => {
   const p = makePage(), ctx = fakeContext();
   const {input} = p.run('djOutput')(ctx), bus = p.run('siteBus')(ctx);
   const trim = input.connections.find(n => n.kind === 'gain');
@@ -144,21 +144,20 @@ test('Song playback, the intro and firmware mode play into the site bus, never s
   const sources = name => site(name);
   assert.match(sources('intro.js'), /bus\.connect\(siteBus\(c\)\)/);
   assert.doesNotMatch(sources('intro.js'), /destination/);
-  assert.match(sources('firmware.js'), /connect\(session\.output\)\.connect\(siteBus\(audio\)\)/);
-  assert.doesNotMatch(sources('firmware.js'), /audio\.destination/);
+  assert.match(sources('premiere.js'), /source\.connect\(siteBus\(context\)\)/);
   assert.match(sources('audio.js'), /this\.compressor\.connect\(this\.keyGain\); this\.keyGain\.connect\(siteBus\(c\)\)/);
   // Only the site bus's limiter reaches a destination.
-  for (const name of ['audio.js', 'dj-synth.js', 'intro.js', 'firmware.js', 'finale.js'])
+  for (const name of ['audio.js', 'dj-synth.js', 'intro.js', 'premiere.js', 'finale.js'])
     assert.equal((sources(name).match(/\.destination\b/g) || []).length, name === 'audio.js' ? 1 : 0, name);
 });
 
-test('The firmware context gets its own bus that follows the volume', () => {
-  const p = makePage(), synthContext = fakeContext(), firmware = fakeContext();
-  const a = p.run('siteBus')(synthContext), b = p.run('siteBus')(firmware);
+test('Another audio context gets its own bus that follows the volume', () => {
+  const p = makePage(), synthContext = fakeContext(), other = fakeContext();
+  const a = p.run('siteBus')(synthContext), b = p.run('siteBus')(other);
   assert.notEqual(a, b);
   p.run('setVolumePercent(80)');
   assert.ok(Math.abs(b.gain.value - 1.6) < 1e-9);
-  firmware.state = 'closed';
+  other.state = 'closed';
   p.run('setVolumePercent(60)');
   assert.equal(p.run('siteSound.buses.size'), 1, 'a closed context is dropped');
 });

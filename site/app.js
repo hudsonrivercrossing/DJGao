@@ -168,7 +168,6 @@ function playKeyTone(midi,part,duration,velocity){
   return synth.note(midi,part==='bass'?'bass':'fm',duration,velocity);
 }
 async function keyDown(baseMidi,id){
-  if(firmwareActive()){firmwareInput(id,baseMidi-39,true);return;}
   if(inspectStudyControl('key',baseMidi))return;
   if(heldNotes.has(id)||scene!=='game')return;const midi=baseMidi+state.octave*12+state.transpose;if(midi<0||midi>127)return;
   const part=routeNote(midi);if(!part)return;
@@ -213,7 +212,7 @@ async function keyDown(baseMidi,id){
   updatePanel();
   if(earlyRelease&&heldNotes.has(id))setTimeout(()=>keyUp(id),70);
 }
-function keyUp(id){if(firmwareActive()){firmwareInput(id,undefined,false);return;}const held=heldNotes.get(id);if(!held)return;if(held.pending){held.released=true;return}held.voice?.release();heldNotes.delete(id);
+function keyUp(id){const held=heldNotes.get(id);if(!held)return;if(held.pending){held.released=true;return}held.voice?.release();heldNotes.delete(id);
   if(state.arp&&!held.latched){arpNotes.delete(held.midi);if(!arpNotes.size)stopPlayback();}
   if(guided&&held.part)syncLessonCursor();
   else if(state.recording&&(!playing||level<2)&&held.part&&held.part!=='drums'&&heldNotes.size===0&&!heldControls.has('SEL')){state.recordStep=(state.recordStep+1)%state.stepCount;state.step=state.recordStep;}
@@ -245,14 +244,12 @@ whiteMidis.forEach((n,i)=>makeKey(n,whiteX[i],false));blackMidis.forEach((n,i)=>
 controls.forEach(([name,x,y])=>{
   const b=document.createElement('button');b.className='hardware-button';b.dataset.control=name;b.setAttribute('aria-label',name==='PLAY'?'PLAY / STOP':name);b.title=name;position(b,x-33,y-35,66,70);b.innerHTML='<span class="button-cap"><i class="control-led"></i></span>';texture(b.querySelector('.button-cap'),x-33,y-35,66,70);
   let holdTimer=null,savedOnHold=false,pointer=null;
-  const cancelPress=()=>{if(firmwareActive())firmwareInput('button-'+pointer,undefined,false);clearTimeout(holdTimer);pointer=null;heldControls.delete(name);usedModifiers.delete(name);b.classList.remove('pressed')};
+  const cancelPress=()=>{clearTimeout(holdTimer);pointer=null;heldControls.delete(name);usedModifiers.delete(name);b.classList.remove('pressed')};
   b.addEventListener('pointerdown',e=>{if(pointer!==null||e.button!==0)return;if(inspectStudyControl('control',name)){e.preventDefault();return;}e.preventDefault();pointer=e.pointerId;b.setPointerCapture(e.pointerId);
-    if(firmwareActive()){firmwareInput('button-'+pointer,fm1Buttons.indexOf(name),true);return;}
     heldControls.add(name);usedModifiers.delete(name);b.classList.add('pressed');savedOnHold=false;if(name==='SAVE'&&level<2&&!guided)holdTimer=setTimeout(()=>{saveDevice();savedOnHold=true},550);if((name==='OCT−'&&heldControls.has('OCT+'))||(name==='OCT+'&&heldControls.has('OCT−'))){usedModifiers.add('OCT−');usedModifiers.add('OCT+');state.octave=0;state.transpose=0;screenMessage('OCTAVE 0');updatePanel()}});
-  b.addEventListener('pointerup',e=>{if(pointer!==e.pointerId)return;const used=usedModifiers.has(name);cancelPress();if(!firmwareActive()&&!savedOnHold&&!used)control(name)});
+  b.addEventListener('pointerup',e=>{if(pointer!==e.pointerId)return;const used=usedModifiers.has(name);cancelPress();if(!savedOnHold&&!used)control(name)});
   ['pointercancel','lostpointercapture'].forEach(type=>b.addEventListener(type,e=>{if(pointer===e.pointerId)cancelPress()}));window.addEventListener('blur',cancelPress);
-  b.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.repeat){e.preventDefault();if(firmwareActive())firmwareInput('focus-'+name,fm1Buttons.indexOf(name),true);else control(name,true)}});
-  b.addEventListener('keyup',e=>{if(firmwareActive()&&(e.key==='Enter'||e.key===' ')){e.preventDefault();firmwareInput('focus-'+name,undefined,false);}});
+  b.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.repeat){e.preventDefault();control(name,true)}});
   $('#hardware-controls').append(b);
 });
 knobs.forEach(([name,x,y])=>{
@@ -362,7 +359,7 @@ function rowsForView(){
   }
 }
 function moveStep(delta){state.step=Math.max(0,Math.min(state.stepCount-1,state.step+delta));state.recordStep=state.step;if(!playing){const p=currentPattern();if(level<2)p.notes[state.step].forEach(m=>pulseNote(m+state.seqTranspose));else if(state.lane==='drums')p.drums.forEach((r,i)=>{if(r[state.step])synth.drum(i)});else p[state.lane][state.step].forEach(m=>pulseNote(state.lane==='lead'?m-12:state.lane==='sfx'?m+36:m,state.lane==='bass'?'bass':state.lane==='sfx'?'sfx':'chip'));}updatePanel();}
-function turn(name,delta){if(firmwareActive()){turnFirmware(name,delta);return;}if(scene!=='game'||inspectStudyControl('knob',name))return;knobAngles.set(name,(knobAngles.get(name)||0)+delta*6);for(const modifier of heldControls)usedModifiers.add(modifier);
+function turn(name,delta){if(scene!=='game'||inspectStudyControl('knob',name))return;knobAngles.set(name,(knobAngles.get(name)||0)+delta*6);for(const modifier of heldControls)usedModifiers.add(modifier);
   if(birthdayJourneyTurn(name,delta)){updatePanel();return;}
   if(name==='MASTER'){synth.volume=Math.max(0,Math.min(1,synth.volume+delta*.025));synth.update();screenMessage('VOLUME '+Math.round(synth.volume*100));}
   else if(name==='PRESETS'&&level===2&&heldControls.has('SEL')){
@@ -516,7 +513,6 @@ function updateKeyFeedback(){
   });
 }
 function updatePanel(){
-  if(firmwareActive())return;
   const running=playing||Boolean(birthdayPreview);
   $('#universe').classList.toggle('playing',running||heldNotes.size>0);$('#universe').classList.toggle('recording',state.recording);
   updateKeyFeedback();
@@ -552,8 +548,6 @@ function updatePanel(){
   refreshKnobInspector();updateProgress();drawDevice();
 }
 function copy(){document.documentElement.lang=language==='zh'?'zh-CN':'en';$('#language').textContent=language==='zh'?'EN':'中文';syncSoundControl();
-  syncFirmwareLabels();
-  if(firmwareActive())return;
   const journey=birthdayJourneyActive();
   $('#lcd-open').hidden=scene==='intro';
   $('#lcd-open').setAttribute('aria-label',T('Enlarge instrument display','放大合成器屏幕'));
@@ -565,8 +559,8 @@ function copy(){document.documentElement.lang=language==='zh'?'zh-CN':'en';$('#l
   $('#power-on').setAttribute('aria-label',T('Power on the instrument','开机'));$('#guide-label').textContent=T('Manual','手册');$('#guide-note').textContent=T('Tap any key or knob to learn it','点机器上任意按键或旋钮，看它做什么');
   $('#advanced-label').textContent=T('Advanced','进阶');$('#advanced-note').textContent=T('Three tricks to try next','接下来可以试的三个玩法');
   $('#study-close').setAttribute('aria-label',T('Close','关闭'));
-  if(studyTab)renderStudy();$('#gesture-hint').textContent=T('Play keys · drag knobs · 1× to zoom / drag body to pan','点琴键 · 拖旋钮 · 点 1× 放大，拖动机身移动');$('#info-title').textContent=T('Help','帮助');$('#info-button').setAttribute('aria-label',T('Help','帮助'));$('#info-close').setAttribute('aria-label',T('Close','关闭'));$('#info-song').setAttribute('aria-label',T('My song','我的歌'));$('#info-about').textContent=T('About','关于');$('#info-lang').textContent=language==='zh'?'English':'中文';$('#info-fw').textContent=T('Firmware','固件');$('#info-screen').textContent=T('Bigger screen','放大屏幕');syncInfoSong();syncFullscreenButton();syncFullscreenSheet();$('#rotate-hint').setAttribute('aria-label',T('Turn sideways to see the whole instrument','横过来看整台机器'));
-  $('#info-copy').textContent=T('The guided song follows a Baud Girl V102 arrangement score and uses a browser synth. Firmware mode runs a selected FM-1 update file through fm1-emu, with the firmware driving the sound, display and LEDs. Product image: Baud Girl / Madeline.','生日歌引导采用 Baud Girl V102 的编曲谱，使用网页合成器发声。「固件」模式通过 fm1-emu 运行所选的 FM-1 更新文件，由固件驱动声音、屏幕和灯。产品图片：Baud Girl / Madeline。');
+  if(studyTab)renderStudy();$('#gesture-hint').textContent=T('Play keys · drag knobs · 1× to zoom / drag body to pan','点琴键 · 拖旋钮 · 点 1× 放大，拖动机身移动');$('#info-title').textContent=T('Help','帮助');$('#info-button').setAttribute('aria-label',T('Help','帮助'));$('#info-close').setAttribute('aria-label',T('Close','关闭'));$('#info-song').setAttribute('aria-label',T('My song','我的歌'));$('#info-about').textContent=T('About','关于');$('#info-lang').textContent=language==='zh'?'English':'中文';$('#info-screen').textContent=T('Bigger screen','放大屏幕');syncInfoSong();syncFullscreenButton();syncFullscreenSheet();$('#rotate-hint').setAttribute('aria-label',T('Turn sideways to see the whole instrument','横过来看整台机器'));
+  $('#info-copy').textContent=T('The guided song follows a Baud Girl V102 arrangement score and uses a browser synth. Product image: Baud Girl / Madeline.','生日歌引导采用 Baud Girl V102 的编曲谱，使用网页合成器发声。产品图片：Baud Girl / Madeline。');
   $('#restart-song').textContent=T('Make a new song','重新做一首');$('#restart-song-question').textContent=T('Delete the birthday song you recorded and start again from choosing a mode? This cannot be undone.','删掉现在录的生日歌，从选模式重新开始？这一步不能撤销。');$('#restart-song-no').textContent=T('Cancel','取消');$('#restart-song-yes').textContent=T('Delete and start over','删掉，重新做');$('#hardware-done').textContent=T('Completed on my FM-1 ✓','我已在真机完成这关 ✓');
   $('#hardware-done').hidden=journey;
   if(journey){
@@ -728,7 +722,7 @@ $('#info-button').onclick=()=>{syncInfoSong();$('#restart-song-confirm').hidden=
 // Closed with Escape or ×, focus goes back to the ? button; a row that opened something keeps its own focus.
 $('#info').addEventListener('close',()=>{const active=document.activeElement;if(!active||active===document.body||active.closest?.('#info'))$('#info-button').focus({preventScroll:true})});
 $('#info-open-song').onclick=()=>{$('#info').close();if(birthdayJourney?.step==='finished')openBirthdayPlayer();else resumeBirthdayJourney();};
-[['#info-lang','#language'],['#info-fw','#firmware-entry'],['#info-screen','#lcd-open']].forEach(([proxy,target])=>$(proxy).onclick=()=>{$('#info').close();$(target).click()});
+[['#info-lang','#language'],['#info-screen','#lcd-open']].forEach(([proxy,target])=>$(proxy).onclick=()=>{$('#info').close();$(target).click()});
 $('#info-about').onclick=()=>{const open=$('#info-copy').hidden;$('#info-copy').hidden=!open;$('#info-about').setAttribute('aria-expanded',String(open));};
 $('#restart-song').onclick=()=>{$('#restart-song-confirm').hidden=false;$('#restart-song-no').focus()};$('#restart-song-no').onclick=()=>{$('#restart-song-confirm').hidden=true;$('#restart-song').focus()};$('#restart-song-yes').onclick=()=>{$('#restart-song-confirm').hidden=true;$('#info').close();startNewBirthdaySong()};['#guide-button','#advanced-button'].forEach(id=>$(id).addEventListener('click',()=>$('#info').close()));$('#info-close').onclick=()=>$('#info').close();
 
@@ -934,7 +928,6 @@ function drawAlgorithm(){
 }
 
 function drawDevice(){
-  if(firmwareActive()){firmwareDrawDisplay();return;}
   sc.fillStyle='#0d0915';
   sc.fillRect(0,0,480,480);
   if(scene==='intro'){
@@ -992,7 +985,7 @@ function resize(){w=viewWidth();h=viewHeight();const d=Math.min(devicePixelRatio
 function burst(x,y,count=10){if(!moving())return;for(let i=0;i<count;i++){const a=Math.random()*Math.PI*2,s=Math.random()*2+1;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1,life:1,decay:.013+Math.random()*.01,r:Math.random()*3+1,color:i%2?'#b9a4ff':color()})}if(particles.length>130)particles.splice(0,particles.length-130);}
 function spark(midi){if(playing)return;const key=document.querySelector(`[data-midi="${midi-state.octave*12-state.transpose}"]`),r=localRect(key||$('#machine'));burst(r.left+r.width*.5,r.top+r.height*.25,3);}
 function paint(time){frame=0;if(document.hidden)return;const dt=last?Math.min((time-last)/16.67,2):1;last=time;ctx.clearRect(0,0,w,h);stars.forEach(s=>{if(moving())s.y-=s.speed*dt;if(s.y<0)s.y=h;ctx.globalAlpha=.12+(Math.sin(time*.0007+s.phase)+1)*.11;ctx.fillStyle='#d4b7ec';ctx.fillRect(s.x,s.y,s.r,s.r)});particles=particles.filter(p=>p.life>0);particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=.02*dt;p.life-=p.decay*dt;ctx.globalAlpha=Math.max(p.life,0)*.5;ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,p.r,p.r)});ctx.globalAlpha=1;if(moving()&&scene==='game'&&state.view==='home'&&!lastScreenMessage&&time-lastWave>=50){lastWave=time;drawWave();mirrorDisplay();}if(!reduced.matches||playing||heldNotes.size)frame=requestAnimationFrame(paint);}
-resize();window.addEventListener('resize',resize);document.addEventListener('visibilitychange',()=>{if(document.hidden){releaseFirmwareInputs();stopFirmwareAudition(firmwareSession);stopBirthdayPreview();if(birthdayMusicPlaying)stopBirthdayMusic();stopPlayback(true);cancelAnimationFrame(frame);frame=0}else{last=0;frame=requestAnimationFrame(paint)}});reduced.addEventListener('change',()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(paint)});
+resize();window.addEventListener('resize',resize);document.addEventListener('visibilitychange',()=>{if(document.hidden){stopBirthdayPreview();if(birthdayMusicPlaying)stopBirthdayMusic();stopPlayback(true);cancelAnimationFrame(frame);frame=0}else{last=0;frame=requestAnimationFrame(paint)}});reduced.addEventListener('change',()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(paint)});
 const gestures=new Map();let pinch=null;
 $('#machine-viewport').addEventListener('pointerdown',e=>{if(e.target.closest('.hardware-key,.hardware-knob,.hardware-button,.power-switch'))return;$('#machine').classList.add('gesturing');const at=toLocalPoint(e.clientX,e.clientY);gestures.set(e.pointerId,at);$('#machine-viewport').setPointerCapture(e.pointerId);if(gestures.size===2){const p=[...gestures.values()];pinch={distance:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),zoom,x:zoomX,y:zoomY,cx:(p[0].x+p[1].x)/2,cy:(p[0].y+p[1].y)/2}}else if(zoom>1)pinch={pan:true,x:zoomX,y:zoomY,startX:at.x,startY:at.y};});
 $('#machine-viewport').addEventListener('pointermove',e=>{if(!gestures.has(e.pointerId)||!pinch)return;followMission=false;$('#universe').classList.remove('mission-camera');const at=toLocalPoint(e.clientX,e.clientY);gestures.set(e.pointerId,at);if(gestures.size===2){const p=[...gestures.values()];zoom=Math.max(1,Math.min(3,pinch.zoom*Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)/pinch.distance));zoomX=pinch.x+(p[0].x+p[1].x)/2-pinch.cx;zoomY=pinch.y+(p[0].y+p[1].y)/2-pinch.cy}else if(pinch.pan){zoomX=pinch.x+at.x-pinch.startX;zoomY=pinch.y+at.y-pinch.startY}zoomX=Math.max(-viewWidth()*.7,Math.min(viewWidth()*.7,zoomX));zoomY=Math.max(-viewHeight()*.6,Math.min(viewHeight()*.6,zoomY));applyZoom();});
@@ -1007,7 +1000,7 @@ window.addEventListener('resize',()=>{
 });
 const endGesture=e=>{$('#machine').classList.remove('gesturing');gestures.delete(e.pointerId);if(gestures.size<2)pinch=null};$('#machine-viewport').addEventListener('pointerup',endGesture);$('#machine-viewport').addEventListener('pointercancel',endGesture);$('#machine-viewport').addEventListener('lostpointercapture',endGesture);
 const shortcuts={a:60,w:61,s:62,e:63,d:64,f:65,t:66,g:67,y:68,h:69,u:70,j:71,k:72,o:73,l:74,p:75,';':76};
-document.addEventListener('keydown',e=>{if(e.target.closest('#manual,#knob-inspector,#lcd-dialog,#study,#volume')||!$('#interlude').hidden||$('#info').open||$('#fullscreen-sheet').open||(scene!=='game'&&!firmwareActive())||e.repeat)return;const key=e.key.toLowerCase();if(e.code==='Space'&&e.target.closest('button'))return;if(e.code==='Space'){e.preventDefault();if(firmwareActive())firmwareInput('space',12,true);else control('PLAY');return}if(Object.hasOwn(shortcuts,key)){e.preventDefault();keyDown(shortcuts[key],'keyboard-'+key)}});
-document.addEventListener('keyup',e=>{keyUp('keyboard-'+e.key.toLowerCase());if(e.code==='Space'&&firmwareActive())firmwareInput('space',undefined,false);});window.addEventListener('blur',()=>{releaseFirmwareInputs();releaseHeld();heldControls.clear();$$('.hardware-button.pressed').forEach(b=>b.classList.remove('pressed'));updatePanel()});
-initKnobInspector();initStudy();initFirmware();initVolume();copy();frame=requestAnimationFrame(paint);
+document.addEventListener('keydown',e=>{if(e.target.closest('#manual,#knob-inspector,#lcd-dialog,#study,#volume')||!$('#interlude').hidden||$('#info').open||$('#fullscreen-sheet').open||scene!=='game'||e.repeat)return;const key=e.key.toLowerCase();if(e.code==='Space'&&e.target.closest('button'))return;if(e.code==='Space'){e.preventDefault();control('PLAY');return}if(Object.hasOwn(shortcuts,key)){e.preventDefault();keyDown(shortcuts[key],'keyboard-'+key)}});
+document.addEventListener('keyup',e=>{keyUp('keyboard-'+e.key.toLowerCase());});window.addEventListener('blur',()=>{releaseHeld();heldControls.clear();$$('.hardware-button.pressed').forEach(b=>b.classList.remove('pressed'));updatePanel()});
+initKnobInspector();initStudy();initVolume();copy();frame=requestAnimationFrame(paint);
 document.fonts?.load('600 24px "Pixelify Sans"').then(drawDevice,()=>{});

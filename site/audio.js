@@ -5,7 +5,7 @@ const fmAlgorithms=[
   {name:'Deep stack',routes:[['M','C'],['C','X'],['X','OUT']],layout:{M:[104,239],C:[212,239],X:[320,239],OUT:[417,239]}}
 ];
 
-// The site's one output. Every sound (keys, song playback, the intro, firmware mode) reaches the speakers
+// The site's one output. Every sound (keys, song playback, the intro, the birthday show) reaches the speakers
 // through a volume gain and a safety limiter on its context. Volume v in [0,1] gives gain 2v: 50% is unity.
 // The limiter's compressor lets a fast transient overshoot by a dB or so; the clipper after it is a straight
 // line up to -3 dBFS and bends smoothly into a -1 dBFS ceiling.

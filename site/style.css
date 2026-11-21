@@ -609,7 +609,6 @@ body{font-family:var(--reading-type)}
 .birthday-downloads{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
 #birthday-pattern-download{min-height:44px;padding:0 16px;border:0;border-radius:8px;background:#fa8bc7;color:#2a1030;font:700 13px/1.2 var(--reading-type);box-shadow:inset 0 1px #ffffff55,0 3px 0 #9a3f78;cursor:pointer;touch-action:manipulation;transition:transform 120ms ease-out,box-shadow 120ms ease-out}
 #birthday-pattern-download:active{transform:translateY(2px);box-shadow:inset 0 1px #ffffff55,0 1px 0 #9a3f78}
-#birthday-firmware-preview{min-height:44px;padding:0 6px;border:0;background:none;color:#e9b3d6;font:13px var(--reading-type);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 #birthday-hardware-source{display:inline-flex;align-items:center;min-height:44px;margin-top:-8px;color:#e9b3d6;font-size:13px}
 #birthday-hardware-differences{border-top:1px solid #433149}
 #birthday-hardware-differences summary{padding:13px 0;color:#ddbed9;font-size:13px;line-height:18px;cursor:pointer}
@@ -624,42 +623,18 @@ body{font-family:var(--reading-type)}
   #interlude[data-song][data-premiere] #birthday-play:hover{background:#33223d}
   .birthday-link:hover{color:#d8c8e2;text-decoration:underline}
   #birthday-hardware-back:hover{background:#1e1526}
-  #birthday-firmware-preview:hover,#birthday-hardware-source:hover{color:#ffd2ec}
+  #birthday-hardware-source:hover{color:#ffd2ec}
 }
 @media(prefers-reduced-motion:reduce){
   .birthday-take,#interlude[data-song] #birthday-play,#birthday-pattern-download{transition:none}
   .birthday-take:active{transform:none}
   #interlude[data-view] #birthday-player-view,#interlude[data-view] #birthday-hardware{animation:none}
 }
-#firmware-audition{position:fixed;z-index:12;inset:auto 12px max(12px,var(--safe-bottom));margin:auto;width:max-content;max-width:calc(100cqw - 24px);padding:8px 12px;border:1px solid #583b5e;border-radius:10px;background:#201627;text-align:center}
-#firmware-audition p{color:#e0c2db;font:12px/1.5 var(--reading-type)}
-#firmware-audition button{min-height:44px;padding:0 10px;border:0;background:none;font-size:12px}
-#firmware-audition-play{color:#f6b7db}
 @media(prefers-reduced-motion:reduce){
   #birthday-surprise::before,.birthday-cheer,.birthday-cake i,#interlude[data-song]:not([data-celebrating]) .birthday-note{animation:none}
   #birthday-surprise::after,#birthday-sparks{display:none}
 }
 
-#firmware-dialog{
-  width:min(420px,calc(100cqw - 28px));max-height:calc(100cqh - 28px);padding:28px;
-  border:1px solid #644761;border-radius:12px;background:#211629;color:#f6def0;
-}
-#firmware-dialog::backdrop{background:#0c0815cc}
-#firmware-dialog h2{font:600 24px/1.25 var(--handheld-type);padding-right:30px}
-#firmware-dialog p{margin:10px 0;color:#d1b9d5;font-size:13px;line-height:1.55}
-.firmware-links{display:flex;gap:16px;margin:12px 0 18px;font-size:13px}
-.firmware-links a{color:#f4aad4}
-#firmware-file-label{display:block;margin-bottom:6px;font-size:12px}
-#firmware-file{width:100%;font:14px var(--reading-type);color:#dfc3dc}
-#firmware-boot{min-height:44px;padding:0 18px;border:0;border-radius:6px;background:#f2b1d8;color:#27132b;font-weight:600}
-#firmware-boot:disabled{opacity:.48;cursor:default}
-#firmware-state{
-  position:absolute;z-index:4;bottom:max(14px,var(--safe-bottom));left:50%;transform:translateX(-50%);
-  max-width:calc(100cqw - 36px);overflow-wrap:anywhere;text-align:center;font:14px/1.4 var(--handheld-type);color:#d5a7cb;
-}
-#universe[data-firmware] .scene-word{display:none}
-#universe[data-firmware] .hardware-key .key-led,#universe[data-firmware] .hardware-button .control-led{opacity:var(--firmware-led,0)}
-#universe[data-firmware] .hardware-key.firmware-key-lit .key-led,#universe[data-firmware] .hardware-button .control-led{transition:none}
 
 /* Optional rotate hint: phone portrait only, beside the framing button. */
 #utility-controls .rotate-hint{display:none;padding:8px;justify-content:center;align-items:center}
@@ -726,7 +701,7 @@ body{font-family:var(--reading-type)}
 #info .info-quiet{align-self:flex-start;min-height:44px;padding:0 2px;border:0;background:none;color:#b7a5c6;font:12px Arial,'PingFang SC',sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 #info .info-quiet[hidden]{display:none}
 .info-about{display:flex;align-items:center;gap:4px;border-top:1px solid #2e2038;color:#6f5c7d;font-size:12px}
-#info-about,.info-quiet-link{min-height:44px;padding:0 4px;border:0;background:none;color:#b7a5c6;font:12px Arial,'PingFang SC',sans-serif;cursor:pointer}.info-about{flex-wrap:wrap}.info-gap{flex:1}.info-quiet-link:focus-visible,#info-about:focus-visible{outline:2px solid #f3a6d4;outline-offset:2px;border-radius:4px}@media(hover:hover) and (pointer:fine){.info-quiet-link:hover{color:#f3dbea}}#universe[data-scene=game] #utility-controls #language,#universe[data-scene=game] #utility-controls #firmware-entry,#universe[data-scene=game] #utility-controls #lcd-open{display:none}
+#info-about,.info-quiet-link{min-height:44px;padding:0 4px;border:0;background:none;color:#b7a5c6;font:12px Arial,'PingFang SC',sans-serif;cursor:pointer}.info-about{flex-wrap:wrap}.info-gap{flex:1}.info-quiet-link:focus-visible,#info-about:focus-visible{outline:2px solid #f3a6d4;outline-offset:2px;border-radius:4px}@media(hover:hover) and (pointer:fine){.info-quiet-link:hover{color:#f3dbea}}#universe[data-scene=game] #utility-controls #language,#universe[data-scene=game] #utility-controls #lcd-open{display:none}
 #info-about[aria-expanded=true]{color:#f3dbea}
 .info-about a{display:inline-flex;align-items:center;min-height:44px;padding:0 4px}
 #info #info-copy{margin:0 0 6px;max-width:none;font-size:12px;line-height:1.7}
@@ -817,9 +792,8 @@ body{height:100dvh;container-type:size}
 :root.rotated{--safe-top:env(safe-area-inset-right,0px);--safe-right:env(safe-area-inset-bottom,0px);--safe-bottom:env(safe-area-inset-left,0px);--safe-left:env(safe-area-inset-top,0px)}
 :root.rotated body{position:absolute;left:0;top:0;width:100dvh;height:100vw;transform-origin:0 0;transform:translateX(100vw) rotate(90deg)}
 /* Modal dialogs sit in the top layer, outside the turned body: centre and turn each one itself. */
-:root.rotated :is(#info,#lcd-dialog,#firmware-dialog,#fullscreen-sheet)[open]{inset:auto;left:50%;top:50%;margin:0;transform:translate(-50%,-50%) rotate(90deg)}
+:root.rotated :is(#info,#lcd-dialog,#fullscreen-sheet)[open]{inset:auto;left:50%;top:50%;margin:0;transform:translate(-50%,-50%) rotate(90deg)}
 :root.rotated :is(#info,#fullscreen-sheet){width:min(440px,calc(100dvh - 28px));max-height:calc(100vw - 24px)}
-:root.rotated #firmware-dialog{width:min(420px,calc(100dvh - 28px));max-height:calc(100vw - 24px)}
 :root.rotated #lcd-dialog{width:min(460px,calc(100dvh - 28px),calc(100vw - 66px));max-height:calc(100vw - 24px)}
 /* Volume: the speaker mutes on a tap; the slider sits beside it with a mouse, or opens below it on a long press. */
 #volume{position:relative;display:flex;align-items:center;border-radius:7px}

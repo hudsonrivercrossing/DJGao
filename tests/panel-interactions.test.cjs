@@ -47,7 +47,6 @@ function buttons() {
   let timerId = 0;
   const state = { octave: 2, transpose: 3 };
   const context = vm.createContext({
-    firmwareActive: () => false,
     controls: [['SAVE', 0, 0], ['OCT−', 0, 0], ['OCT+', 0, 0]],
     document: { createElement: () => element() }, window, $: () => root,
     heldControls, usedModifiers, state, level: 0, guided:false, inspectStudyControl:()=>false,

@@ -17,7 +17,7 @@ function parameterContext() {
     arpModes:['Up','Down','Inclusive','Exclusive','Random','Order','Repeat'],
     presetNames:['WEB BELL','WEB E.PIANO','WEB GLASS','WEB SOFT PAD','WEB PLUCK'],
     currentPattern:()=>pattern,arpNotes:new Set([67,60,64]),color:()=> '#f58abd',noteName:String,
-    birthdayJourneyActive:()=>false,birthdayPreview:null,firmwareActive:()=>false,moveStep(){},saveProgress(){},stopPlayback(){},setTempo(){},setView(){}
+    birthdayJourneyActive:()=>false,birthdayPreview:null,moveStep(){},saveProgress(){},stopPlayback(){},setTempo(){},setView(){}
   });
   vm.runInContext(audio+'\nconst synth=new SoundLabSynth();',context);
   vm.runInContext(segment(app,'const clockRates=','function moveStep'),context);

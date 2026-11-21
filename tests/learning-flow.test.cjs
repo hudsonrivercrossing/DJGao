@@ -61,7 +61,7 @@ function makePage({stored={}}={}){
     requestAnimationFrame:()=>1,cancelAnimationFrame(){},
     setTimeout(fn,delay=0){timers.set(++sequence,{fn,at:now+delay});return sequence;},clearTimeout:id=>timers.delete(id),sounds
   });
-  const code=['fullscreen.js','content.js','audio.js','knob-inspector.js','learning-content.js','learning.js','dj-score.js','dj-synth.js','dj-storage.js','dj-export.js','finale.js','premiere.js','firmware.js','volume.js','app.js','intro.js'].map(site).join('\n');
+  const code=['fullscreen.js','content.js','audio.js','knob-inspector.js','learning-content.js','learning.js','dj-score.js','dj-synth.js','dj-storage.js','dj-export.js','finale.js','premiere.js','volume.js','app.js','intro.js'].map(site).join('\n');
   vm.runInContext(code,context);
   const run=code=>vm.runInContext(code,context);
   run("synth.wake=async()=>{};synth.note=(midi,kind,duration)=>{sounds.push({midi,kind,duration});return {release(){}}};synth.drum=drum=>sounds.push({drum});synth.gameEffect=effect=>{sounds.push({effect});return null}");
@@ -381,41 +381,6 @@ test('Key changes are written into the notes: no step Transpose anywhere',()=>{
   assert.ok(steps.every(s=>s.transpose===null));
 });
 
-test('Firmware mode sends real matrix edges and keeps a key held until its final input is released',async()=>{
-  const {run}=makePage();
-  run(`const inputs=[];firmwareSession={ready:true,keys:new Map(),volume:560,node:{port:{postMessage(message){inputs.push(message)}}}}`);
-  await run(`keyDown(60,'touch1');keyDown(60,'touch2');keyUp('touch1');keyUp('touch2')`);
-  run(`firmwareInput('rec',fm1Buttons.indexOf('REC'),true);turn('ALGORITHM',3);firmwareInput('rec',undefined,false);turn('MASTER',-2)`);
-  assert.deepEqual(JSON.parse(run('JSON.stringify(inputs)')), [
-    {type:'key',id:21,down:true},{type:'key',id:21,down:false},
-    {type:'key',id:13,down:true},{type:'enc',enc:1,clicks:3},{type:'key',id:13,down:false},{type:'pot',value:512}
-  ]);
-  assert.equal(run('sounds.length'),0);
-  assert.equal(run(`const base=new Uint8Array(8192),flash=base.slice();flash[4097]=77;
-    const delta=firmwareFlashDelta(base,flash);delta.length===4100&&new DataView(delta.buffer).getUint32(0,true)===4096&&delta[5]===77`),true);
-});
-
-test('A one-frame firmware key light remains visible before fading and a retrigger cancels its pending fade',()=>{
-  const {run,timers,fire,time}=makePage();
-  const lit=()=>run(`$('[data-midi="60"]').classList.contains('firmware-key-lit')`);
-  run('firmwareLed(21,.3);firmwareLed(21,0)');
-  assert.equal(lit(),true);
-  const first=run(`$('[data-midi="60"]').firmwareLightTimer`);
-  assert.equal(timers.get(first).at-time(),72);
-  run('firmwareLed(21,.3)');
-  assert.equal(timers.has(first),false);
-  run('firmwareLed(21,0)');
-  fire(run(`$('[data-midi="60"]').firmwareLightTimer`));
-  assert.equal(lit(),false);
-});
-
-// Every node under a study body, depth first (the test page's elements keep plain children arrays).
-function studyNodes(nodes){
-  const all=[],walk=list=>list.forEach(node=>{all.push(node);walk(node.children||[]);});
-  walk(nodes.get('#study-content').children);
-  return all;
-}
-
 test('Power-on goes straight to the song: there is no panel tour anywhere',async()=>{
   const html=site('index.html');
   for(const gone of ['id="panel-tour"','id="replay-tour"','id="tour-','onboarding.js'])assert.ok(!html.includes(gone),gone);
@@ -428,6 +393,13 @@ test('Power-on goes straight to the song: there is no panel tour anywhere',async
   assert.equal(nodes.get('#info-button').hidden,false);
   assert.equal([...local.keys()].some(key=>/tour|introduced/.test(key)),false);
 });
+
+// Every node under a study body, depth first (the test page's elements keep plain children arrays).
+function studyNodes(nodes){
+  const all=[],walk=list=>list.forEach(node=>{all.push(node);walk(node.children||[]);});
+  walk(nodes.get('#study-content').children);
+  return all;
+}
 
 test('The manual opens straight into lookup: MASTER, a labelled list and a folded glossary',async()=>{
   const {run,nodes,local}=makePage();
@@ -514,7 +486,7 @@ test('Every pitched key she records sounds at its pitch in the take',async()=>{
   }
 });
 
-test('The card after the journey offers the V102 export and firmware preview in its FM-1 steps',async()=>{
+test('The card after the journey offers the V102 export in its FM-1 steps',async()=>{
   const {run,nodes,startStandardAtTake}=journeyPage();
   await startStandardAtTake(3);
   assert.doesNotThrow(()=>run('skipBirthdayPass()'));
@@ -524,7 +496,6 @@ test('The card after the journey offers the V102 export and firmware preview in 
   nodes.get('#birthday-fm1').onclick();
   assert.equal(nodes.get('#birthday-hardware').hidden,false);
   assert.equal(nodes.get('#birthday-pattern-download').hidden,false);
-  assert.equal(nodes.get('#birthday-firmware-preview').hidden,false);
   assert.doesNotThrow(()=>run('selectBirthdayTake(2)'));
   const takes=nodes.get('#birthday-hardware-takes').children;
   assert.equal(takes.length,4);
@@ -538,21 +509,6 @@ test('The card after the journey offers the V102 export and firmware preview in 
   });
   assert.equal(takes[0].children[0].children[0].textContent.startsWith('八音盒 · Pattern 9'),true);
   assert.doesNotThrow(()=>run('encodeDjPatterns(birthdayJourney.work)'));
-});
-
-test('Hear this take in V102 sends the take’s exported patterns to the firmware',async()=>{
-  const {run,timers,startStandardAtTake}=journeyPage();
-  await startStandardAtTake(3);
-  run('skipBirthdayPass()');
-  run('endBirthdaySurprise()');
-  run(`var sent=[];firmwareSession={ready:true,keys:new Map(),birthdayIndex:2,output:{gain:{value:1}},node:{port:{postMessage(message){sent.push(message)}}}};
-    Math.random=()=>0;playFirmwareAudition(firmwareSession)`);
-  for(const [id,timer] of [...timers].sort((a,b)=>a[1].at-b[1].at)){timers.delete(id);timer.fn();}
-  const bytes=run('sent.flatMap(message=>message.bytes)');
-  const ons=[];for(let i=0;i<bytes.length;i+=3)if(bytes[i]===0x90)ons.push(bytes[i+1]);
-  const steps=run('birthdayHardwareTake(2).patterns.flatMap(p=>p.steps)');
-  assert.equal(ons.length,steps.reduce((sum,step)=>sum+step.notes.length*step.ratchet,0));
-  assert.equal(run('firmwareSession.audition'),null);
 });
 
 test('Skip this take fills the take, plays it once and waits for Next take',async()=>{
@@ -1384,7 +1340,7 @@ test('Reloading after a fully recorded take keeps it and waits for PLAY',async()
 
 test('Play it on FM-1: backup first, then download, send and set up; Back returns to the player',async()=>{
   const html=site('index.html');
-  const order=['birthday-hardware-back','birthday-backup-warning','birthday-pattern-download','birthday-firmware-preview','birthday-hardware-source','birthday-hardware-guide','birthday-hardware-takes','birthday-hardware-notes'].map(id=>html.indexOf('id="'+id+'"'));
+  const order=['birthday-hardware-back','birthday-backup-warning','birthday-pattern-download','birthday-hardware-source','birthday-hardware-guide','birthday-hardware-takes','birthday-hardware-notes'].map(id=>html.indexOf('id="'+id+'"'));
   order.forEach((at,index)=>assert.ok(at>0&&(index===0||at>order[index-1]),'step order at '+index));
   assert.ok(html.indexOf('id="birthday-player-view"')<html.indexOf('id="birthday-hardware"'));
   const page=journeyPage();
@@ -1397,11 +1353,7 @@ test('Play it on FM-1: backup first, then download, send and set up; Back return
   assert.equal(page.nodes.get('#interlude').getAttribute('aria-labelledby'),'birthday-hardware-title');
   assert.deepEqual(['birthday-step-backup','birthday-step-download','birthday-step-send','birthday-step-setup'].map(id=>page.nodes.get('#'+id).textContent),['先备份','下载','发送','设置']);
   assert.equal(page.nodes.get('#birthday-backup-warning').textContent,'发送会覆盖 FM‑1 上全部 16 个 Pattern，先在 Device Manager 里备份。');
-  assert.equal(page.nodes.get('#birthday-firmware-preview').textContent,'先用固件试听「八音盒」');
-  assert.equal(page.nodes.get('#birthday-firmware-preview').getAttribute('aria-label'),undefined,'the visible label is the name');
-  page.run('selectBirthdayTake(2)');
-  assert.equal(page.nodes.get('#birthday-firmware-preview').textContent,'先用固件试听「'+page.run('djTakes[2].title[1]')+'」');
-  page.run('selectBirthdayTake(0)');
+  assert.ok(!html.includes('birthday-firmware-preview'),'no firmware preview: the steps are for the real FM-1');
   assert.equal(page.nodes.get('#birthday-hardware-notes-title').textContent,'和网页的差异');
   page.run('language="en";renderBirthdayPlayer()');
   assert.equal(page.nodes.get('#birthday-backup-warning').textContent,'Sending this replaces all 16 patterns on your FM-1. Back them up in Device Manager first.');
@@ -1626,12 +1578,12 @@ test('Help holds Manual, Advanced, my song, then one quiet footer line; settings
   const html=site('index.html');
   const help=html.slice(html.indexOf('<dialog id="info"'),html.indexOf('</dialog>',html.indexOf('<dialog id="info"')));
   assert.deepEqual([...help.matchAll(/<button id="([^"]+)"/g)].map(match=>match[1]),
-    ['info-close','guide-button','advanced-button','info-open-song','restart-song','restart-song-no','restart-song-yes','info-lang','info-fw','info-screen','info-about']);
-  assert.ok(/<footer class="info-about">[^]*info-lang[^]*info-fw[^]*info-screen[^]*info-about/.test(help),'settings sit in the quiet footer');
+    ['info-close','guide-button','advanced-button','info-open-song','restart-song','restart-song-no','restart-song-yes','info-lang','info-screen','info-about']);
+  assert.ok(/<footer class="info-about">[^]*info-lang[^]*info-screen[^]*info-about/.test(help),'settings sit in the quiet footer');
   assert.ok(!/<h3\b/.test(help),'no one-item section headings');
   assert.ok(!/study-primary|info-actions/.test(help));
-  for(const gone of ['info-language','info-firmware','info-lcd','info-settings-title','info-learn-title','replay-tour','id="restart"','apprentice-button'])assert.ok(!html.includes(gone),gone);
-  for(const corner of ['language','firmware-entry','lcd-open'])assert.ok(html.includes('id="'+corner+'"'),corner+' stays on the machine screen');
+  for(const gone of ['info-fw','firmware-entry','firmware-dialog','firmware-audition','firmware-state','info-language','info-firmware','info-lcd','info-settings-title','info-learn-title','replay-tour','id="restart"','apprentice-button'])assert.ok(!html.includes(gone),gone);
+  for(const corner of ['language','lcd-open'])assert.ok(html.includes('id="'+corner+'"'),corner+' stays on the machine screen');
   assert.ok(/data-scene=game\] #utility-controls #lcd-open\{display:none\}/.test(site('style.css')),'the top bar stays sparse while playing');
   const {run,nodes}=makePage();
   for(const name of ['startLesson','hearTake','rememberTake','lessonCue','openBirthdayStudy'])assert.equal(run('typeof '+name),'undefined',name);
@@ -1722,19 +1674,4 @@ test('Escape in the FM-1 steps goes back to the player; on the player it closes 
   assert.equal(nodes.get('#birthday-player-view').hidden,false);
   escape();
   assert.equal(nodes.get('#interlude').hidden,true);
-});
-
-test('Back from the firmware preview, the card is cued at that take: time, segment and play agree',async()=>{
-  assert.match(site('firmware.js'),/cueBirthdayTake\(session\.birthdayIndex\)/);
-  const {run,nodes,finishedStandardWork}=journeyPage();
-  await finishedStandardWork();
-  nodes.get('#birthday-skip').onclick();
-  run('djPlays.length=0;cueBirthdayTake(2)');
-  const start=run('djTimeline(birthdayJourney.work).takeStarts[2]');
-  assert.equal(nodes.get('#birthday-timeline').children[2].getAttribute('aria-current'),'true');
-  assert.equal(nodes.get('#birthday-status').textContent,run('T(...djTakes[2].title)'));
-  assert.match(nodes.get('#birthday-time').textContent,new RegExp('^'+Math.floor(start/60)+':'+String(Math.floor(start)%60).padStart(2,'0')+' / '));
-  assert.equal(nodes.get('#birthday-play').textContent,'继续播放');
-  nodes.get('#birthday-play').onclick();await Promise.resolve();
-  assert.equal(run('djPlays[0].options.from'),start);
 });

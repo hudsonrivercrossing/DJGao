@@ -104,5 +104,3 @@ The four-take DJ set (Music box → House Party → Birthday Drop → Hyper Enco
 | 7, 8 | Hyper Encore: fireworks and applause | 1/32T | 64 + 61 | Encore in A |
 
 What the file leaves out or changes: notes the web marks as arpeggio, chord or double come from the preset; a held arpeggio bass key is written as the key. Chance is a whole step's setting, so only steps holding nothing but Chance hits roll; other Chance hits always play. A Ratchet repeats every note of its step inside that step. Pitch slides are not written. The party horn becomes the Alarm effect. Bass below F2 and the drop's chord keys below F5 move up an octave into their part's keys. Untested on hardware (Task 1): the drum slots, Ratchet over held notes and effects, echo tails at preset changes, the HEY drum and the 8‑Bit limiter.
-
-**Hear this take in V102** plays the take's exported patterns into the running firmware as MIDI at each pattern's Rate. The firmware supplies the sounds; locks and preset changes are not sent.
