@@ -568,7 +568,8 @@ function copy(){document.documentElement.lang=language==='zh'?'zh-CN':'en';$('#l
   if(journey){
     const pass=birthdayJourney.pass;
     $('#chapter-label').textContent=T(...djTakes[pass].title);
-    $('#scene-title').innerHTML=T(['PLAY THE <em>MUSIC BOX.</em>','START THE <em>HOUSE PARTY.</em>','BUILD THE <em>DROP.</em>','PLAY THE <em>ENCORE.</em>'][pass],['弹响<em>八音盒。</em>','开一场 <em>House Party。</em>','做一个 <em>Drop。</em>','弹完<em>安可。</em>'][pass]);
+    // The label above already names the take, so the title says what the take is for.
+    $('#scene-title').innerHTML=T(['START <em>SOFT.</em>','GET THEM <em>MOVING.</em>','BUILD IT <em>UP.</em>','ONE MORE, <em>LOUDER.</em>'][pass],['先轻轻<em>弹一遍。</em>','让大家<em>动起来。</em>','把气氛<em>推上去。</em>','最后一遍，<em>最响。</em>'][pass]);
   }
   paintCourseRoute();updatePanel();if($('#manual').open){manualPages();drawManual(0)}
 }
@@ -623,7 +624,8 @@ function positionMissionCamera(cue){
   const id=level+':'+[...controls,...notes,cue.knob].join(',');
   if(!controls.length&&!notes.length&&!cue.knob||framedCue===id)return;
   const elements=[...controls.map(name=>$('[data-control="'+name+'"]')),...notes.map(note=>$('[data-midi="'+note+'"]'))];
-  if(cue.knob)elements.push($(`[data-knob="${cue.knob}"]`));
+  // A knob step's result shows on the LCD (the wave list, the value), so the shot holds both.
+  if(cue.knob)elements.push($(`[data-knob="${cue.knob}"]`),$('#device-display'));
   const machine=$('#machine'),hud=$('#device-hud'),utility=$('#utility-controls');
   $('#universe').classList.add('mission-camera');
   const area={
