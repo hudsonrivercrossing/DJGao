@@ -378,7 +378,7 @@ function startBirthdayJourney(){
 // beginning; a take she recorded to the end waits for PLAY, then "Next take".
 function restoreBirthdayWork(work){
   const journey=birthdayJourney,complete=!djNextTarget(work);
-  if(work.step!=='finished'&&!complete)work.takes[work.pass].clear();
+  if(work.step!=='finished'&&!complete){work.takes[work.pass].clear();work.guided[work.pass].clear();}
   journey.work=work;
   work.takes.forEach((done,pass)=>{
     for(const target of djHandTargets(pass,work.mode))if(done.has(target.id))writeBirthdayEvent(journey.patterns[pass],target);
@@ -475,9 +475,12 @@ function skipBirthdayPass(){
   const journey=birthdayJourney,{work}=journey;
   if(!work||!['voice','record','notes'].includes(journey.step))return;
   state.recording=false;
-  for(let target=djNextTarget(work);target;target=djNextTarget(work))birthdayRecordHand(target);
+  const guided=work.guided[journey.pass];
+  for(let target=djNextTarget(work);target;target=djNextTarget(work)){guided.add(target.id);birthdayRecordHand(target);}
   if(journey.pass===3){
-    finishBirthdaySong(djHandTargets(3,work.mode).at(-1));
+    const last=djHandTargets(3,work.mode).at(-1);
+    guided.add(last.id);
+    finishBirthdaySong(last);
     return;
   }
   journey.step='listening';
@@ -776,9 +779,12 @@ function renderBirthdayHardware(){
 
 function renderBirthdayPlayer(){
   const {work,patterns}=birthdayJourney,length=birthdayClock(birthdaySet.length);
-  const played=work.takes.reduce((sum,take)=>sum+take.size,0);
+  // Notes the guide filled in on a skip are not hers; when every take was skipped the line says nothing about notes.
+  const played=djPlayedByHand(work);
   $('#win-title').textContent=T('Your birthday song','你的生日歌');
-  $('#win-detail').textContent=T('Four takes · '+length+' · you played '+played+(played===1?' note':' notes')+' yourself','四版 · '+length+' · 你亲手弹了 '+played+' 个音');
+  $('#win-detail').textContent=played
+    ?T('Four takes · '+length+' · you played '+played+(played===1?' note':' notes')+' yourself','四版 · '+length+' · 你亲手弹了 '+played+' 个音')
+    :T('Four takes · '+length,'四版 · '+length);
   $('#birthday-close').setAttribute('aria-label',T('Back to the instrument','回到琴面'));
   $('#birthday-close').onclick=()=>{
     closeBirthdayPlayer();

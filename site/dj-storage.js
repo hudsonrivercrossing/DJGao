@@ -9,7 +9,7 @@ function djSaveWork(work){
   try{
     const store=djStorage();
     if(!store)return false;
-    store.setItem(DJ_STORAGE_KEY,JSON.stringify({...work,takes:work.takes.map(take=>[...take])}));
+    store.setItem(DJ_STORAGE_KEY,JSON.stringify({...work,takes:work.takes.map(take=>[...take]),guided:(work.guided||[]).map(take=>[...take])}));
     return true;
   }catch{return false;}
 }
@@ -24,7 +24,9 @@ function djLoadWork(){
     if(!Array.isArray(work.takes)||work.takes.length!==4||!work.takes.every(Array.isArray))return null;
     if(!Array.isArray(work.mixes)||work.mixes.length!==4||!work.mixes.every(mix=>mix&&typeof mix==='object'))return null;
     if(!Number.isInteger(work.pass)||work.pass<0||work.pass>3)return null;
-    return {...work,takes:work.takes.map(take=>new Set(take.map(String)))};
+    // A save from before skips were tracked has no guided list: all of its notes count as hers.
+    const guided=Array.isArray(work.guided)&&work.guided.length===4&&work.guided.every(Array.isArray)?work.guided:[[],[],[],[]];
+    return {...work,takes:work.takes.map(take=>new Set(take.map(String))),guided:guided.map(take=>new Set(take.map(String)))};
   }catch{return null;}
 }
 

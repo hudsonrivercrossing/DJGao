@@ -595,8 +595,17 @@ test('After the last key the cheer waits for a tap, then the card shows one time
   assert.equal(nodes.get('#birthday-status').textContent,run('T(...djTakes[0].title)'));
   const length=run('djTimeline(birthdayJourney.work).length'),clock=Math.floor(length/60)+':'+String(Math.floor(length)%60).padStart(2,'0');
   assert.equal(nodes.get('#birthday-time').textContent,'0:00 / '+clock);
-  const played=run('birthdayJourney.work.takes.reduce((sum,take)=>sum+take.size,0)');
-  assert.equal(nodes.get('#win-detail').textContent,'四版 · '+clock+' · 你亲手弹了 '+played+' 个音');
+  assert.equal(run('djPlayedByHand(birthdayJourney.work)'),0,'every take was skipped');
+  assert.equal(nodes.get('#win-detail').textContent,'四版 · '+clock,'no note count when the guide played every note');
+});
+test('The card counts only the notes she played; the ones the guide filled in on a skip are not hers',async()=>{
+  const {run,nodes,startStandardAtTake,enterTargets}=journeyPage();
+  await startStandardAtTake(3);
+  await enterTargets(3);
+  run('skipBirthdayPass()');
+  nodes.get('#birthday-skip').onclick();
+  assert.equal(run('djPlayedByHand(birthdayJourney.work)'),3);
+  assert.match(nodes.get('#win-detail').textContent,/ · 你亲手弹了 3 个音$/);
 });
 
 test('The show is the card’s one filled button; play is a quiet ring at the start of the status line; FM-1 is a quiet link',async()=>{

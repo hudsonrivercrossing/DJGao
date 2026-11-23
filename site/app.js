@@ -255,9 +255,11 @@ controls.forEach(([name,x,y])=>{
 knobs.forEach(([name,x,y])=>{
   const b=document.createElement('div');b.className='hardware-knob';b.dataset.knob=name;b.setAttribute('role','slider');b.tabIndex=0;b.setAttribute('aria-label',name);b.setAttribute('aria-description',T('Drag vertically; Shift or move sideways for fine control.','上下拖动，侧移或按 Shift 微调。'));position(b,x-37,y-37,74,74);b.innerHTML='<i class="knob-pointer"></i>';if(name==='MASTER'){const cap=document.createElement('i');cap.className='master-cap';texture(cap,x-31,y-31,62,62);b.append(cap)}
   let drag=null,wheelAmount=0;
-  b.addEventListener('pointerdown',e=>{if(drag)return;if(inspectStudyControl('knob',name)){e.preventDefault();return;}e.preventDefault();b.focus({preventScroll:true});b.setPointerCapture(e.pointerId);const at=toLocalPoint(e.clientX,e.clientY);drag={id:e.pointerId,x:at.x,y:at.y,remainder:0};b.classList.add('dragging');openKnobInspector(name)});
+  b.addEventListener('pointerdown',e=>{if(drag)return;if(inspectStudyControl('knob',name)){e.preventDefault();return;}e.preventDefault();b.focus({preventScroll:true});b.setPointerCapture(e.pointerId);const at=toLocalPoint(e.clientX,e.clientY);drag={id:e.pointerId,x:at.x,y:at.y,remainder:0,target:scene==='game'&&nextCue().knob===name};b.classList.add('dragging');openKnobInspector(name)});
   b.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;const at=toLocalPoint(e.clientX,e.clientY),fine=e.shiftKey||Math.abs(at.x-drag.x)>56;drag.remainder+=(drag.y-at.y)/(fine?18:5);drag.y=at.y;const steps=Math.trunc(drag.remainder);if(steps){drag.remainder-=steps;turn(name,steps)}refreshKnobInspector(fine)});
-  const end=e=>{if(!drag||e.pointerId!==drag.id)return;drag=null;b.classList.remove('dragging');refreshKnobInspector(false)};b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);b.addEventListener('lostpointercapture',end);window.addEventListener('blur',()=>{drag=null;b.classList.remove('dragging')});
+  // The camera holds still while a knob is held, so on release it frames whatever the step moved on to;
+  // if this knob was the step's target and the step is done, its inspector closes so it doesn't cover the LCD.
+  const end=e=>{if(!drag||e.pointerId!==drag.id)return;const wasTarget=drag.target;drag=null;b.classList.remove('dragging');refreshKnobInspector(false);if(scene!=='game')return;const cue=nextCue();if(wasTarget&&cue.knob!==name)hideKnobInspector();positionMissionCamera(cue)};b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);b.addEventListener('lostpointercapture',end);window.addEventListener('blur',()=>{drag=null;b.classList.remove('dragging')});
   b.addEventListener('wheel',e=>{e.preventDefault();if(inspectStudyControl('knob',name))return;wheelAmount+=-e.deltaY*(e.deltaMode===1?16:1)/(e.shiftKey?4:1);const steps=Math.trunc(wheelAmount/40);openKnobInspector(name);if(steps){wheelAmount-=steps*40;turn(name,Math.max(-8,Math.min(8,steps))) }},{passive:false});
   b.addEventListener('keydown',e=>{if(['Enter',' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)&&inspectStudyControl('knob',name)){e.preventDefault();return;}if(['ArrowUp','ArrowRight','ArrowDown','ArrowLeft'].includes(e.key)){e.preventDefault();openKnobInspector(name);turn(name,e.key==='ArrowUp'||e.key==='ArrowRight'?1:-1)}if(e.key==='Enter'){e.preventDefault();openKnobInspector(name)}if(e.key==='Escape')hideKnobInspector()});
   $('#hardware-controls').append(b);
@@ -559,7 +561,7 @@ function copy(){document.documentElement.lang=language==='zh'?'zh-CN':'en';$('#l
   $('#power-on').setAttribute('aria-label',T('Power on the instrument','开机'));$('#guide-label').textContent=T('Manual','手册');$('#guide-note').textContent=T('Tap any key or knob to learn it','点机器上任意按键或旋钮，看它做什么');
   $('#advanced-label').textContent=T('Advanced','进阶');$('#advanced-note').textContent=T('Three tricks to try next','接下来可以试的三个玩法');
   $('#study-close').setAttribute('aria-label',T('Close','关闭'));
-  if(studyTab)renderStudy();$('#gesture-hint').textContent=T('Play keys · drag knobs · 1× to zoom / drag body to pan','点琴键 · 拖旋钮 · 点 1× 放大，拖动机身移动');$('#info-title').textContent=T('Help','帮助');$('#info-button').setAttribute('aria-label',T('Help','帮助'));$('#info-close').setAttribute('aria-label',T('Close','关闭'));$('#info-song').setAttribute('aria-label',T('My song','我的歌'));$('#info-about').textContent=T('About','关于');$('#info-lang').textContent=language==='zh'?'English':'中文';$('#info-screen').textContent=T('Bigger screen','放大屏幕');syncInfoSong();syncFullscreenButton();syncFullscreenSheet();$('#rotate-hint').setAttribute('aria-label',T('Turn sideways to see the whole instrument','横过来看整台机器'));
+  if(studyTab)renderStudy();paintGestureHint();$('#info-title').textContent=T('Help','帮助');$('#info-button').setAttribute('aria-label',T('Help','帮助'));$('#info-close').setAttribute('aria-label',T('Close','关闭'));$('#info-song').setAttribute('aria-label',T('My song','我的歌'));$('#info-about').textContent=T('About','关于');$('#info-lang').textContent=language==='zh'?'English':'中文';$('#info-screen').textContent=T('Bigger screen','放大屏幕');syncInfoSong();syncFullscreenButton();syncFullscreenSheet();$('#rotate-hint').setAttribute('aria-label',T('Turn sideways to see the whole instrument','横过来看整台机器'));
   $('#info-copy').textContent=T('The guided song follows a Baud Girl V102 arrangement score and uses a browser synth. Product image: Baud Girl / Madeline.','生日歌引导采用 Baud Girl V102 的编曲谱，使用网页合成器发声。产品图片：Baud Girl / Madeline。');
   $('#restart-song').textContent=T('Make a new song','重新做一首');$('#redo-title').textContent=T('Make a new song?','重新做一首？');$('#redo-body').textContent=T('This song will be deleted and you\'ll start again from choosing a mode. This can\'t be undone.','现在这首会被删掉，从选模式重新开始。这一步不能撤销。');$('#redo-cancel').textContent=T('Cancel','取消');$('#redo-confirm').textContent=T('Delete and redo','删掉，重做');$('#hardware-done').textContent=T('Completed on my FM-1 ✓','我已在真机完成这关 ✓');
   $('#hardware-done').hidden=journey;
@@ -577,13 +579,22 @@ function fitMachine(){
   applyZoom();
 }
 
+// The zoom button reads Follow while a phone is upright mid-stage, so the hint names whichever label it shows.
+const zoomButtonFollows=()=>phoneLayout()&&scene==='game'&&!stageDone(level);
+function paintGestureHint(){
+  $('#gesture-hint').textContent=zoomButtonFollows()
+    ?T('Play keys · drag knobs · Follow frames the next step / drag body to pan','点琴键 · 拖旋钮 · 点「跟随」对准下一步，拖动机身移动')
+    :T('Play keys · drag knobs · 1× to zoom / drag body to pan','点琴键 · 拖旋钮 · 点 1× 放大，拖动机身移动');
+}
+
 function applyZoom(){
   $('#universe').classList.toggle('zoomed',zoom>1.05);
   const machine=$('#machine'),button=$('#zoom');
   machine.style.setProperty('--zoom',zoom);
   machine.style.setProperty('--pan-x',zoomX+'px');
   machine.style.setProperty('--pan-y',zoomY+'px');
-  const follow=phoneLayout()&&scene==='game'&&!stageDone(level);
+  const follow=zoomButtonFollows();
+  paintGestureHint();
   button.textContent=follow?T('Follow','跟随'):zoom===1?'1×':zoom.toFixed(1)+'×';
   if(follow)button.setAttribute('aria-pressed',String(zoom>1.05));else button.removeAttribute('aria-pressed');
   button.setAttribute('aria-label',follow?T('Follow the current control','跟随当前操作'):zoom>1.05?T('Show full instrument','恢复全貌'):T('Magnify instrument','放大机身'));

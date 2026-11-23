@@ -439,10 +439,20 @@ function djHandTargets(pass,mode){
     .map(({id,part,step,midi,octave,length,title,name,ratchet,phrase,sound})=>({id,part,step,midi,octave,length,title,...(name?{name}:{}),...(ratchet?{ratchet}:{}),...(phrase?{phrase}:{}),...(sound!==undefined?{sound}:{})}));
 }
 
+// The notes she played herself: every recorded note except the ones the guide filled in on a skip.
+function djPlayedByHand(work){
+  return work.takes.reduce((sum,take,pass)=>{
+    const guided=work.guided?.[pass];
+    return sum+[...take].filter(id=>!guided?.has(id)).length;
+  },0);
+}
+
 function djNewWork(mode,seed){
   return {
     version:1,mode,seed,pass:0,step:'mode',heard:false,
     takes:[0,1,2,3].map(()=>new Set()),
+    // The ids in each take that the guide filled in when she skipped it; they are in takes too.
+    guided:[0,1,2,3].map(()=>new Set()),
     mixes:[{wave:'Triangle',delay:.22},{wave:'Pulse 25',delay:.22},{wave:'Pulse 12.5',delay:.22},{wave:'Pulse 12.5',delay:.22}]
   };
 }
